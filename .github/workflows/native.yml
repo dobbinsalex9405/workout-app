@@ -44,7 +44,7 @@ jobs:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          echo "$KEYSTORE_B64" | base64 -d > release.p12
+          printf '%s' "$KEYSTORE_B64" | tr -d ' \r\n' | base64 -d > release.p12
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$BT/zipalign" -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
           "$BT/apksigner" sign --ks release.p12 --ks-key-alias workoutapp --ks-pass env:KS_PASS --key-pass env:KS_PASS --out WorkoutApp.apk aligned.apk
