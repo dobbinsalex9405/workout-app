@@ -1,0 +1,8 @@
+{
+  "appId": "com.workoutapp.app",
+  "appName": "Workout App",
+  "webDir": "dist",
+  "backgroundColor": "#030509",
+  "ios": { "contentInset": "never" },
+  "server": { "androidScheme": "https" }
+}
