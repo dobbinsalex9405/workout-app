@@ -44,7 +44,7 @@ export function MuscleEditor({ value, onChange }: { value: MuscleSplit; onChange
       <p className="fine center">
         Tap muscles to mark them <b>{brush}</b>. Tap again to clear.
       </p>
-      <BodyMap values={values} selected={null} onSelect={apply} color={color} />
+      <BodyMap values={values} selected={null} onSelect={apply} color={color} storeKey="editor.view" />
       <div className="chips wrap">
         {MUSCLE_IDS.map((m) => {
           const st = primary.includes(m) ? 'p' : secondary.includes(m) ? 's' : '';

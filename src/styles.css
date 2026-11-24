@@ -468,3 +468,23 @@ button.card:active { transform: scale(0.985); border-color: var(--line2); }
 @media (max-width: 360px) {
   .seg button { font-size: 12.5px; padding: 9px 2px; }
 }
+
+/* ---------- Body viewer: one figure, flips between front / side / back ---------- */
+.body-viewer { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.flip-stage { position: relative; width: 100%; display: flex; justify-content: center; perspective: 900px; touch-action: pan-y; }
+.body-map.single { width: auto; height: min(52vh, 410px); max-width: 100%; transform-origin: 50% 50%; will-change: transform; }
+.muscle-editor .body-map.single { height: min(48vh, 360px); max-width: 100%; }
+.body-map.out-l { animation: flipOutL 170ms cubic-bezier(0.55, 0, 1, 0.45) forwards; }
+.body-map.out-r { animation: flipOutR 170ms cubic-bezier(0.55, 0, 1, 0.45) forwards; }
+.body-map.in-l { animation: flipInL 230ms cubic-bezier(0, 0.55, 0.45, 1) both; }
+.body-map.in-r { animation: flipInR 230ms cubic-bezier(0, 0.55, 0.45, 1) both; }
+@keyframes flipOutL { to { transform: rotateY(-90deg); opacity: 0.35; filter: brightness(1.6); } }
+@keyframes flipOutR { to { transform: rotateY(90deg); opacity: 0.35; filter: brightness(1.6); } }
+@keyframes flipInL { from { transform: rotateY(90deg); opacity: 0.35; filter: brightness(1.6); } }
+@keyframes flipInR { from { transform: rotateY(-90deg); opacity: 0.35; filter: brightness(1.6); } }
+.flip-floor { position: absolute; bottom: -4px; left: 50%; width: 130px; height: 14px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse, rgba(47, 123, 255, 0.35), transparent 70%); pointer-events: none; }
+.view-pills { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.view-pills button { padding: 6px 16px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); transition: all 0.2s var(--ease); }
+.view-pills button.on { background: rgba(47, 123, 255, 0.22); color: var(--ice); box-shadow: inset 0 0 0 1px rgba(47, 123, 255, 0.5); }
+@media (prefers-reduced-motion: reduce) { .body-map.single { animation: none !important; } }
+.side-fig path { vector-effect: non-scaling-stroke; }
