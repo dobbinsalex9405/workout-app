@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { useLocal } from '../store';
 import { fmtDate, muscleStats, stallAdvice, stallInfo, toSessions } from '../calc';
-import { STALL_SESSIONS } from '../science';
+import { STALL_MIN_DAYS, STALL_SESSIONS } from '../science';
 import type { Unit } from '../types';
 import { Sheet } from './Sheet';
 
@@ -29,7 +29,7 @@ export function StallSheet({ exId, onClose }: { exId: number; onClose: () => voi
         <span className="badge warn">Stalled</span>
         <p className="muted sm">
           {info.since} sessions without a new estimated-1RM best
-          {info.lastPrDate ? ` (last one ${fmtDate(info.lastPrDate)})` : ''}. Flagged at {STALL_SESSIONS}.
+          {info.lastPrDate ? ` (last one ${fmtDate(info.lastPrDate)})` : ''}. Flagged after {STALL_SESSIONS} sessions and {STALL_MIN_DAYS / 7} weeks with no new best.
         </p>
       </div>
       <div className="advice">

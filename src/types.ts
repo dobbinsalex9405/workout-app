@@ -19,6 +19,7 @@ export type Muscle =
   | 'quads'
   | 'hamstrings'
   | 'adductors'
+  | 'abductors'
   | 'calves';
 
 export interface Exercise {

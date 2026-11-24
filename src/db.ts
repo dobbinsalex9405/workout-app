@@ -23,6 +23,7 @@ export const db = new AppDB();
 
 export async function initDB() {
   if ((await db.exercises.count()) === 0) await db.exercises.bulkAdd(SEED);
+  await migrateSeedV2();
   // One-time: seed "My exercises" with everything already in a plan or with logged sets.
   if (!localStorage.getItem('mine.v1')) {
     const used = new Set<number>([...(await db.plans.toArray()).flatMap((p) => p.exerciseIds), ...((await db.sets.orderBy('exerciseId').uniqueKeys()) as number[])]);
@@ -35,6 +36,35 @@ export async function initDB() {
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * One-time update for databases seeded before abductors existed. Only touches built-in
+ * exercises, and only if their muscles still match the old defaults (your edits are kept).
+ * Logged sets are never touched; history simply re-counts with the new muscle mapping.
+ */
+async function migrateSeedV2() {
+  if (localStorage.getItem('seed.v2')) return;
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+  await db.transaction('rw', db.exercises, async () => {
+    const all = await db.exercises.toArray();
+    const byName = new Map(all.map((e) => [e.name.toLowerCase(), e]));
+    for (const seed of SEED) {
+      const cur = byName.get(seed.name.toLowerCase());
+      if (!cur) {
+        await db.exercises.add({ ...seed });
+        continue;
+      }
+      if (cur.custom) continue;
+      if (seed.name === 'Hip Abduction' && same(cur.primary, ['glutes']) && cur.secondary.length === 0) {
+        await db.exercises.update(cur.id!, { primary: ['abductors'], secondary: ['glutes'] });
+      }
+      if ((seed.name === 'Lunge' || seed.name === 'Bulgarian Split Squat') && !cur.primary.includes('abductors') && !cur.secondary.includes('abductors')) {
+        await db.exercises.update(cur.id!, { secondary: [...cur.secondary, 'abductors'] });
+      }
+    }
+  });
+  localStorage.setItem('seed.v2', '1');
 }
 
 export async function exportJSON(): Promise<string> {

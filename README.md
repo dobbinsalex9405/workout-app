@@ -25,7 +25,8 @@ All training constants are in `src/science.ts`, next to their citations:
 
 - **Volume:** synergist sets count ½ (Pelland 2024). Bands: <5 low, 5–10 moderate, 10–20 productive, 20+ very high (Schoenfeld 2017, Baz-Valle 2022).
 - **Recovery:** 48h small, 60h medium, 72h large muscles; +24h for sets to failure (Korak 2015, Morán-Navarro 2017). The size split is a heuristic and is labelled as such in the app.
-- **Stall:** 5 sessions without a new estimated-1RM best. No research definition exists; this is a coaching convention, set to your choice.
+- **Stall:** 3 sessions **and** at least 2 weeks without a new estimated-1RM best. No research definition exists; coaches commonly use 2–3 sessions, and the 2-week floor stops lifts you train often from being flagged after one off week.
+- **Muscles:** 19 groups, including abductors (glute medius/minimus, TFL) next to adductors.
 - **Advice:** double progression with +2–5% (upper) / +5–10% (lower) per ACSM 2009; deload of about 1 week, half the sets, 2–3 reps in reserve (Bell 2023).
 - **Warm-up:** one set at 70% × 5 by default, adjustable 50–80% (Abad 2011, Ribeiro 2020).
 

@@ -10,6 +10,7 @@ import {
   READY_THRESHOLD,
   RECOVERY_HOURS,
   SECONDARY_SET,
+  STALL_MIN_DAYS,
   STALL_SESSIONS,
   VOLUME_TARGET,
   WARMUP_REPS,
@@ -124,7 +125,7 @@ export interface StallInfo {
   lastPrDate?: number;
 }
 
-export function stallInfo(sessions: Session[]): StallInfo {
+export function stallInfo(sessions: Session[], now = Date.now()): StallInfo {
   let best = 0;
   let lastIdx = -1;
   sessions.forEach((s, i) => {
@@ -134,10 +135,12 @@ export function stallInfo(sessions: Session[]): StallInfo {
     }
   });
   const since = lastIdx < 0 ? 0 : sessions.length - 1 - lastIdx;
-  return { stalled: since >= STALL_SESSIONS, since, best, lastPrDate: lastIdx >= 0 ? sessions[lastIdx].date : undefined };
+  const lastPrDate = lastIdx >= 0 ? sessions[lastIdx].date : undefined;
+  const longEnough = lastPrDate != null && now - lastPrDate >= STALL_MIN_DAYS * DAY;
+  return { stalled: since >= STALL_SESSIONS && longEnough, since, best, lastPrDate };
 }
 
-const LOWER: Muscle[] = ['quads', 'hamstrings', 'glutes', 'adductors', 'calves', 'lowerBack'];
+const LOWER: Muscle[] = ['quads', 'hamstrings', 'glutes', 'adductors', 'abductors', 'calves', 'lowerBack'];
 export const isLowerBody = (ex?: Exercise) => !!ex && ex.primary.some((m) => LOWER.includes(m));
 
 export interface Advice {

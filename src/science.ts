@@ -70,6 +70,7 @@ export const MUSCLES: Record<Muscle, { name: string; size: SizeClass }> = {
   quads: { name: 'Quads', size: 'large' },
   hamstrings: { name: 'Hamstrings', size: 'large' },
   adductors: { name: 'Adductors', size: 'large' },
+  abductors: { name: 'Abductors', size: 'medium' },
   calves: { name: 'Calves', size: 'small' },
 };
 
@@ -78,11 +79,14 @@ export const MUSCLE_IDS = Object.keys(MUSCLES) as Muscle[];
 /* ---------- Progression & stalls ---------- */
 
 /**
- * Sessions in a row without a new estimated-1RM best before an exercise is flagged.
- * There is no research definition of a "stall"; coaches commonly use 2–3 sessions.
- * 5 is your choice: more patient, fewer false alarms.
+ * An exercise is flagged as stalled when BOTH are true since its last new estimated-1RM best:
+ *  - at least STALL_SESSIONS sessions logged (coaching convention: 2–3 sessions without progress), and
+ *  - at least STALL_MIN_DAYS days passed (~2–3 weeks), so an exercise trained 2–3×/week
+ *    isn't flagged after a single rough week.
+ * There is no research definition of a "stall"; this is a convention, not a finding.
  */
-export const STALL_SESSIONS = 5;
+export const STALL_SESSIONS = 3;
+export const STALL_MIN_DAYS = 14;
 
 /** Load jump once you beat your target reps by 1–2 (ACSM 2009 position stand: 2–10%). */
 export const LOAD_INCREASE = { upper: [0.02, 0.05], lower: [0.05, 0.1] } as const;
@@ -178,7 +182,7 @@ export const REFERENCES: Ref[] = [
   },
   {
     topic: 'Stalls',
-    claim: 'No research definition exists. Coaches commonly flag 2–3 sessions without progress; this app uses 5 (your setting).',
+    claim: 'No research definition exists. Coaches commonly flag 2–3 sessions without progress; this app flags 3 sessions and at least 2 weeks without a new best.',
     cite: 'Coaching convention; deload consensus does not define plateaus.',
     url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC10511399/',
     confidence: 'Convention',

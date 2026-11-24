@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { useLocal } from '../store';
 import { DAY, bestOf, fmtDateLong, fmtN, fmtW, prTimeline, stallInfo, toDisplay, toSessions } from '../calc';
-import { E1RM_MAX_RELIABLE_REPS, STALL_SESSIONS } from '../science';
+import { E1RM_MAX_RELIABLE_REPS, STALL_MIN_DAYS, STALL_SESSIONS } from '../science';
 import type { Session, SetEntry, Unit } from '../types';
 import { Chart, Sparkline } from '../components/Chart';
 import { StallSheet } from '../components/StallSheet';
@@ -59,7 +59,9 @@ function Overview({ onPick }: { onPick: (id: number) => void }) {
             <b>{rows.length}</b>
           </div>
           <div className={`tile ${stalled ? 'warn' : ''}`}>
-            <small>Stalled ({STALL_SESSIONS}+ sessions)</small>
+            <small title={`${STALL_SESSIONS}+ sessions and ${STALL_MIN_DAYS / 7}+ weeks without a new best`}>
+              Stalled lifts
+            </small>
             <b>{stalled}</b>
           </div>
         </div>
