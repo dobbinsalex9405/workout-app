@@ -5,6 +5,7 @@ import { REFERENCES, WARMUP_DEFAULT_PCT } from '../science';
 import type { Unit } from '../types';
 import { Icon } from '../components/Icon';
 import { BUILD, PLATFORM, canUpdate, checkForUpdate, openUpdate } from '../update';
+import { sendFeedback, type FeedbackCategory } from '../feedback';
 
 export function SettingsScreen({ onClose }: { onClose: () => void }) {
   const [unit, setUnit] = useLocal<Unit>('unit', 'lb');
@@ -103,6 +104,8 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
             {msg && <div className="msg">{msg}</div>}
           </section>
 
+          <Feedback />
+
           <AppVersion />
 
           <section className="card">
@@ -169,6 +172,65 @@ function AppVersion() {
         </>
       ) : (
         <small className="muted">The web version updates itself when you reload.</small>
+      )}
+    </section>
+  );
+}
+
+function Feedback() {
+  const [cat, setCat] = useLocal<FeedbackCategory>('feedback.cat', 'idea');
+  const [text, setText] = useLocal('feedback.draft', '');
+  const [contact, setContact] = useLocal('feedback.contact', '');
+  const [outbox] = useLocal<unknown[]>('feedback.outbox', []);
+  const [status, setStatus] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const send = async () => {
+    if (!text.trim() || busy) return;
+    setBusy(true);
+    const delivered = await sendFeedback(cat, text, contact);
+    setBusy(false);
+    setText('');
+    setStatus(delivered ? 'Thanks! Feedback sent.' : "Saved. It'll send automatically next time the app can reach the server.");
+  };
+
+  return (
+    <section className="card">
+      <span className="label">Feedback</span>
+      <p className="muted sm">Found a bug or have an idea? It goes straight to the developer. Only what you type here is sent (plus the app version), never your workouts.</p>
+      <div className="seg">
+        {(
+          [
+            ['bug', 'Bug'],
+            ['idea', 'Idea'],
+            ['other', 'Other'],
+          ] as [FeedbackCategory, string][]
+        ).map(([k, l]) => (
+          <button key={k} className={cat === k ? 'on' : ''} onClick={() => setCat(k)}>
+            {l}
+          </button>
+        ))}
+      </div>
+      <textarea
+        className="feedback-text"
+        rows={5}
+        maxLength={4000}
+        value={text}
+        placeholder={cat === 'bug' ? 'What happened, and what did you expect?' : cat === 'idea' ? 'What would make the app better for you?' : 'Anything on your mind'}
+        onChange={(e) => {
+          setText(e.target.value);
+          setStatus('');
+        }}
+      />
+      <input value={contact} maxLength={200} placeholder="Name or how to reach you (optional)" onChange={(e) => setContact(e.target.value)} />
+      <button className="btn primary big" disabled={!text.trim() || busy} onClick={send}>
+        {busy ? 'Sending…' : 'Send feedback'}
+      </button>
+      {status && <div className="msg">{status}</div>}
+      {outbox.length > 0 && !busy && (
+        <small className="muted">
+          {outbox.length} message{outbox.length === 1 ? '' : 's'} waiting to send.
+        </small>
       )}
     </section>
   );

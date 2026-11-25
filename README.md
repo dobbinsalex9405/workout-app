@@ -46,6 +46,19 @@ npm run sync             # build + copy web code into both native projects
 
 A free Apple ID signs iOS builds for 7 days; the $99/yr account gives TestFlight builds (90 days).
 
+## Feedback
+
+Settings has a Feedback form (Bug / Idea / Other, optional contact). Messages go straight to the
+developer's laptop: `scripts/feedback-server.mjs` listens on 127.0.0.1:5191 and Tailscale Funnel
+publishes only that server at `https://<laptop>.ts.net:8443/feedback`. It can only write small files
+(size and rate limited) into the feedback folder: one JSON per message plus a readable `feedback-log.md`.
+If the laptop is off, the phone keeps the message in an outbox and resends it on the next launch.
+
+- Start-up: Windows task "Workout App feedback" (`scripts/feedback-server.xml`), runs hidden at sign-in
+  and on network reconnect. To move the folder (e.g. to an external drive), change the folder argument
+  in that task.
+- Funnel: `tailscale funnel --bg --https=8443 --set-path /feedback http://127.0.0.1:5191`
+
 ## Dev notes
 
 - In dev, `window.db` is the Dexie database, for poking at data from the console.

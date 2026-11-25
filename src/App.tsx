@@ -10,6 +10,7 @@ import { PRFlash } from './components/PRFlash';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Icon, type IconName } from './components/Icon';
 import { checkForUpdate } from './update';
+import { flushFeedback } from './feedback';
 
 const TABS: { id: string; label: string; icon: IconName }[] = [
   { id: 'workout', label: 'Workout', icon: 'workout' },
@@ -71,6 +72,7 @@ export default function App() {
     const check = () => {
       void autoEndStaleWorkout();
       void checkForUpdate();
+      void flushFeedback();
     };
     check();
     const t = window.setInterval(check, 60000);
