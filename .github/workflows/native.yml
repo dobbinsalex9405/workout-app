@@ -4,14 +4,15 @@
 # Both are attached to a GitHub Release named after the build number.
 name: Native builds
 
+# Releases are batched: pushing to main does NOT ship an update (other people use the app).
+# When enough changes have piled up, run this workflow by hand with a one-line summary:
+#   gh workflow run native.yml -f summary="New PR rules, edit exercises, brachioradialis"
 on:
-  push:
-    branches: [main]
-    # Docs-only changes don't need new app builds.
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
   workflow_dispatch:
+    inputs:
+      summary:
+        description: One-line "What's new" shown in the in-app update banner
+        required: true
 
 permissions:
   contents: write
@@ -99,24 +100,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          SUMMARY: ${{ inputs.summary }}
         run: |
-          NL=$(printf '\n_'); NL=${NL%_}
-          gh release create "build-${{ github.run_number }}" WorkoutApp.apk WorkoutApp.ipa             --repo "${{ github.repository }}" --target "${{ github.sha }}"             --title "Build ${{ github.run_number }}"             --notes "What's new: $(git log -1 --format=%s)${NL}${NL}Android: send WorkoutApp.apk. iPhone: update from the AltStore source, or sideload WorkoutApp.ipa with AltServer."
+          # Banner reads the first line; below it, every change since the last release.
+          PREV=$(git tag --list 'build-*' --sort=-v:refname | head -1)
+          {
+            echo "What's new: $SUMMARY"
+            echo
+            git log --no-merges --format='- %s' ${PREV:+$PREV..HEAD}
+            echo
+            echo "Android: send WorkoutApp.apk. iPhone: update from the AltStore source, or sideload WorkoutApp.ipa with AltServer."
+          } > notes.md
+          gh release create "build-${{ github.run_number }}" WorkoutApp.apk WorkoutApp.ipa --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Build ${{ github.run_number }}" --notes-file notes.md
       # AltStore source: a tiny "app store" listing. Add the URL in AltStore once
       # (Browse -> Sources -> +) and new builds show up as updates in My Apps.
       - name: Build AltStore source
+        env:
+          SUMMARY: ${{ inputs.summary }}
         run: |
           OWNER="${GITHUB_REPOSITORY%/*}"; REPO="${GITHUB_REPOSITORY#*/}"
           SITE="https://${OWNER}.github.io/${REPO}"
           mkdir -p site
           cp assets/icon-only.png site/icon.png
-          jq -n             --arg site "$SITE"             --arg version "1.0.${{ github.run_number }}"             --arg build "${{ github.run_number }}"             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)"             --arg notes "$(git log -1 --format=%s)"             --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/build-${{ github.run_number }}/WorkoutApp.ipa"             --argjson size "$(stat -c%s WorkoutApp.ipa)"             --arg repo "https://github.com/${GITHUB_REPOSITORY}"             '{
+          jq -n             --arg site "$SITE"             --arg version "1.0.${{ github.run_number }}"             --arg build "${{ github.run_number }}"             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)"             --arg notes "$SUMMARY"             --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/build-${{ github.run_number }}/WorkoutApp.ipa"             --argjson size "$(stat -c%s WorkoutApp.ipa)"             --arg repo "https://github.com/${GITHUB_REPOSITORY}"             '{
               name: "Workout App",
               identifier: "com.workoutapp.source",
               subtitle: "Private builds of Workout App",
