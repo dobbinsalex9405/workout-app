@@ -38,11 +38,13 @@ export function PRFlash() {
         <div className="pr-title">NEW PR</div>
         <div className="pr-ex">{pr.exercise}</div>
         <div className="pr-detail">{pr.detail}</div>
-        <div className="pr-kinds">
-          {pr.kinds.map((k) => (
-            <span key={k}>{k}</span>
-          ))}
-        </div>
+        {pr.kinds.length > 0 && (
+          <div className="pr-kinds">
+            {pr.kinds.map((k) => (
+              <span key={k}>{k}</span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

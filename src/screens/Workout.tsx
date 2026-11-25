@@ -284,7 +284,7 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
     await db.sets.add({ workoutId: workout.id!, exerciseId: exId, weight: kg, reps, type: draft.t, ts: Date.now(), prs });
     // After a warm-up, clear so the working-weight hint comes back; otherwise keep values for the next set.
     setDraft(draft.t === 'warmup' ? { w: '', r: '', t: 'normal' } : { w: wStr, r: rStr, t: draft.t });
-    if (prs.length) showPR({ exercise: ex?.name ?? '', kinds: ['Heaviest weight'], detail: `${fmtW(kg, unit)} ${unit} × ${reps}` });
+    if (prs.length) showPR({ exercise: ex?.name ?? '', kinds: [], detail: `${fmtW(kg, unit)} ${unit} × ${reps}` });
   };
 
   const removeExercise = async () => {

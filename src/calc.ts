@@ -81,7 +81,7 @@ export function prTimeline(sets: SetEntry[]): PRRecord[] {
   const out: PRRecord[] = [];
   let bw = 0;
   sorted.forEach((s, i) => {
-    if (i > 0 && s.weight > bw + 0.01) out.push({ ts: s.ts, kind: 'Heaviest', weight: s.weight, reps: s.reps });
+    if (i > 0 && s.weight > bw + 0.01) out.push({ ts: s.ts, kind: 'PR', weight: s.weight, reps: s.reps });
     bw = Math.max(bw, s.weight);
   });
   return out.reverse();
