@@ -7,6 +7,10 @@ name: Native builds
 on:
   push:
     branches: [main]
+    # Docs-only changes don't need new app builds.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
 
 permissions:
