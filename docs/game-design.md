@@ -45,7 +45,11 @@ Each group has a **Maturity** score `M` (0 → ~100 in the first year of trainin
 - For each exercise, the **ratio** = recent best estimated 1RM (best in the last 8 weeks) ÷ that exercise's **baseline**.
 - **Baseline:** the best e1RM of the first 2 sessions on that exercise.
 - **Switching exercises never resets progress.** A new exercise *inherits* its group's current strength level: its baseline is divided by the group's current ratio. So a brand-new exercise starts at the level you've already earned.
-- The group's strength ratio is the average across the group's exercises from the last 8 weeks, weighted by session count.
+- The group's strength ratio is a **weighted average** of its exercises' ratios, and the weight **decays by sessions, not days**:
+  - Each session of an exercise adds weight, and every later session of the *group* that doesn't include that exercise shrinks it: `weight = Σ 0.85^n` over that exercise's sessions, where `n` = group sessions since **(tune)**.
+  - An exercise you tried a few times and dropped fades out within ~10–15 group sessions. It never drags the average down forever, and it never needs deleting.
+  - **Time off doesn't change the mix.** Weights only move when you train the group, so a vacation doesn't reshuffle which lifts count. Detraining is handled separately (§2.2).
+  - Exercises with weight under 0.05 are ignored.
 - `StrengthPts = 100 × log2(ratio)`. Doubling your strength in a group = 100 points. **(tune)**
 - Uses e1RM (Epley), capped at 10 reps like the tracker, so high-rep sets don't inflate it.
 
@@ -61,7 +65,7 @@ Each group has a **Maturity** score `M` (0 → ~100 in the first year of trainin
 
 **What this gives us (the design requirements):**
 - A **stall** freezes the strength half but the work half keeps banking, so stats barely move rather than drop.
-- **Switching exercises** costs nothing, because of the inherited baseline.
+- **Switching exercises** costs nothing, because of the inherited baseline, and **dropped exercises fade out** by session-based decay instead of lingering in the average.
 - **Small muscles aren't disadvantaged.** Everything is relative to research targets and your own baseline, never to raw weight.
 
 ### 2.2 Decay (detraining)
@@ -104,9 +108,9 @@ Six classes, one per group. Pick the class you are **in real life**. The app sug
 | Class | Group | Weapon family | Style |
 |---|---|---|---|
 | **Lancer** | Legs | Spears & lances | Fast, multi-hit, acts often |
-| **Knight** | Arms | Sword + shield | Steady damage, blocks, counters |
+| **Knight** | Chest | Sword + shield | Armor, blocks, counters, taunts |
 | **Rogue** | Shoulders | Daggers | Crits, bleeds, burst |
-| **Juggernaut** | Chest | Two-handed weapons | Armor, big slow hits, taunts |
+| **Juggernaut** | Arms | Two-handed weapons | Heavy damage, big slow hits |
 | **Ranger** | Back | Bows & crossbows | Stamina-hungry skills, range |
 | **Monk** | Core | Staves & fist wraps | Sustain, flurries, self-heals |
 
@@ -152,9 +156,9 @@ Each class has one **pure** weapon (100% its own stat) and five **blends** (75% 
 | Class (main stat) | Pure 100% | + Arms | + Legs | + Shoulders | + Chest | + Core | + Back |
 |---|---|---|---|---|---|---|---|
 | **Lancer** (Legs) | Pike | War Lance | n/a | Hunting Spear | Halberd | Partisan | Trident |
-| **Knight** (Arms) | Arming Sword & Kite Shield | n/a | Broadsword & Buckler | Estoc & Shield | Bastion Sword & Tower Shield | Mace & Shield | Flail & Shield |
+| **Knight** (Chest) | Arming Sword & Kite Shield | Bastion Sword & Tower Shield | Broadsword & Buckler | Estoc & Shield | n/a | Mace & Shield | Flail & Shield |
 | **Rogue** (Shoulders) | Twin Daggers | Kukris | Stilettos | n/a | Parrying Dagger | Sai | Throwing Knives |
-| **Juggernaut** (Chest) | Greatsword | Warhammer | Zweihänder | Greataxe | n/a | Maul | Poleaxe |
+| **Juggernaut** (Arms) | Greatsword | n/a | Zweihänder | Greataxe | Warhammer | Maul | Poleaxe |
 | **Ranger** (Back) | Longbow | Composite Bow | Short Bow | Recurve Bow | Crossbow | Greatbow | n/a |
 | **Monk** (Core) | Quarterstaff | Iron Staff | Bo Staff | Fist Wraps | Tonfa | n/a | Three-section Staff |
 
@@ -226,7 +230,7 @@ Features unlock with **level**, so training literally opens the town. **(gates t
 
 | Real life | In game |
 |---|---|
-| **New PR** | Loot drop or unlock a weapon skill (e.g. a bench PR unlocks a two-handed technique) |
+| **New PR** | Loot drop or unlock a weapon skill (e.g. a bench PR unlocks a shield technique) |
 | **Stall** (tracker rule: 3 sessions + 2 weeks without a new best) | Shop **sale** in town. Turns frustration into something good |
 | **Deload week** | **Resting at camp**: restores HP or gives a buff on return. Deloading is rewarded, not punished |
 | **Weekly target hit** | **Morale** streak: a small all-stat buff that grows with consecutive weeks |
