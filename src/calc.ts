@@ -1,4 +1,5 @@
 import type { Exercise, Muscle, SetEntry, Session, Unit } from './types';
+import { db } from './db';
 import {
   DELOAD,
   FAILURE_EXTRA_HOURS,
@@ -95,7 +96,11 @@ export function prTimeline(sets: SetEntry[]): PRRecord[] {
 
 /* ---------- Sessions & stalls ---------- */
 
-export function toSessions(sets: SetEntry[]): Session[] {
+/**
+ * One entry per workout. Pass `starts` (workoutId -> startedAt) so a session is dated by when the
+ * workout began: a late-night lift that runs past midnight counts for the day it started.
+ */
+export function toSessions(sets: SetEntry[], starts?: Map<number, number>): Session[] {
   const map = new Map<number, Session>();
   for (const s of sets) {
     if (!isWorking(s)) continue;
@@ -114,7 +119,13 @@ export function toSessions(sets: SetEntry[]): Session[] {
     x.reps += s.reps;
     x.sets += 1;
   }
+  if (starts) for (const x of map.values()) x.date = starts.get(x.workoutId) ?? x.date;
   return [...map.values()].sort((a, b) => a.date - b.date);
+}
+
+/** workoutId -> start time, for dating sessions by the day the workout began. */
+export async function workoutStarts(): Promise<Map<number, number>> {
+  return new Map((await db.workouts.toArray()).map((w) => [w.id!, w.startedAt]));
 }
 
 export interface StallInfo {

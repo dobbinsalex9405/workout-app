@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { useLocal } from '../store';
-import { DAY, bestOf, fmtDateLong, fmtN, fmtW, prTimeline, stallInfo, toDisplay, toSessions } from '../calc';
+import { DAY, bestOf, fmtDateLong, fmtN, fmtW, prTimeline, stallInfo, toDisplay, toSessions, workoutStarts } from '../calc';
 import { E1RM_MAX_RELIABLE_REPS, STALL_MIN_DAYS, STALL_SESSIONS } from '../science';
 import type { Session, SetEntry, Unit } from '../types';
 import { Chart, Sparkline } from '../components/Chart';
@@ -25,6 +25,7 @@ function Overview({ onPick }: { onPick: (id: number) => void }) {
   const rows =
     useLiveQuery(async () => {
       const [exs, sets] = await Promise.all([db.exercises.toArray(), db.sets.toArray()]);
+      const starts = await workoutStarts();
       const by = new Map<number, SetEntry[]>();
       for (const s of sets) {
         const arr = by.get(s.exerciseId);
@@ -35,7 +36,7 @@ function Overview({ onPick }: { onPick: (id: number) => void }) {
         .filter((e) => by.has(e.id!))
         .map((e) => {
           const list = by.get(e.id!)!;
-          const sessions = toSessions(list);
+          const sessions = toSessions(list, starts);
           const last = sessions[sessions.length - 1];
           const cutoff = (last?.date ?? 0) - 30 * DAY;
           const before = sessions.filter((s) => s.date <= cutoff);
@@ -96,8 +97,9 @@ function Detail({ exId, onBack }: { exId: number; onBack: () => void }) {
   const [stallOpen, setStallOpen] = useState(false);
   const ex = useLiveQuery(() => db.exercises.get(exId), [exId]);
   const sets = useLiveQuery(() => db.sets.where('exerciseId').equals(exId).toArray(), [exId]) ?? [];
+  const starts = useLiveQuery(workoutStarts, []);
 
-  const all = toSessions(sets);
+  const all = toSessions(sets, starts);
   const cutoff = RANGE_DAYS[range] === Infinity ? 0 : Date.now() - RANGE_DAYS[range] * DAY;
   const s: Session[] = all.filter((x) => x.date >= cutoff);
   const best = bestOf(sets);
