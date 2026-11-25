@@ -13,6 +13,7 @@ export type Muscle =
   | 'biceps'
   | 'triceps'
   | 'forearms'
+  | 'brachioradialis'
   | 'abs'
   | 'obliques'
   | 'glutes'

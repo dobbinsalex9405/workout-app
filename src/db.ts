@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Exercise, Plan, SetEntry, Workout } from './types';
+import type { Exercise, Muscle, Plan, SetEntry, Workout } from './types';
 import { SEED } from './seed';
 
 class AppDB extends Dexie {
@@ -24,6 +24,7 @@ export const db = new AppDB();
 export async function initDB() {
   if ((await db.exercises.count()) === 0) await db.exercises.bulkAdd(SEED);
   await migrateSeedV2();
+  await migrateSeedV3();
   // One-time: seed "My exercises" with everything already in a plan or with logged sets.
   if (!localStorage.getItem('mine.v1')) {
     const used = new Set<number>([...(await db.plans.toArray()).flatMap((p) => p.exerciseIds), ...((await db.sets.orderBy('exerciseId').uniqueKeys()) as number[])]);
@@ -65,6 +66,40 @@ async function migrateSeedV2() {
     }
   });
   localStorage.setItem('seed.v2', '1');
+}
+
+/**
+ * One-time update adding the brachioradialis. Built-in curls get it only if their muscles
+ * still match the old defaults (your edits are kept); new built-ins (Incline Dumbbell Curl,
+ * Reverse Curl) are added if missing.
+ */
+async function migrateSeedV3() {
+  if (localStorage.getItem('seed.v3')) return;
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+  const OLD: Record<string, [Muscle[], Muscle[]]> = {
+    'barbell curl': [['biceps'], ['forearms']],
+    'dumbbell curl': [['biceps'], ['forearms']],
+    'hammer curl': [['biceps', 'forearms'], []],
+    'preacher curl': [['biceps'], []],
+  };
+  await db.transaction('rw', db.exercises, async () => {
+    const all = await db.exercises.toArray();
+    const byName = new Map(all.map((e) => [e.name.toLowerCase(), e]));
+    for (const seed of SEED) {
+      const key = seed.name.toLowerCase();
+      const cur = byName.get(key);
+      if (!cur) {
+        await db.exercises.add({ ...seed });
+        continue;
+      }
+      const old = OLD[key];
+      if (cur.custom || !old) continue;
+      if (same(cur.primary, old[0]) && same(cur.secondary, old[1])) {
+        await db.exercises.update(cur.id!, { primary: [...seed.primary], secondary: [...seed.secondary] });
+      }
+    }
+  });
+  localStorage.setItem('seed.v3', '1');
 }
 
 export async function exportJSON(): Promise<string> {

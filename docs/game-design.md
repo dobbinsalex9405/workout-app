@@ -29,7 +29,7 @@ The tracker has 19 muscles. The game folds them into six groups. Each group feed
 | Group | Muscles (from the tracker) | Stat | What it does |
 |---|---|---|---|
 | **Legs** | quads, hamstrings, glutes, adductors, abductors, calves | **Speed** | How often you act on the turn timeline |
-| **Arms** | biceps, triceps, forearms | **Attack Power** | Base multiplier on *all* damage |
+| **Arms** | biceps, triceps, forearms, brachioradialis | **Attack Power** | Base multiplier on *all* damage |
 | **Shoulders** | front, side and rear delts | **Crit** | Critical hit chance and damage |
 | **Chest** | chest | **Armor** | Damage reduction |
 | **Core** | abs, obliques | **Health** | Max HP |

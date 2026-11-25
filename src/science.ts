@@ -64,6 +64,7 @@ export const MUSCLES: Record<Muscle, { name: string; size: SizeClass }> = {
   biceps: { name: 'Biceps', size: 'small' },
   triceps: { name: 'Triceps', size: 'small' },
   forearms: { name: 'Forearms', size: 'small' },
+  brachioradialis: { name: 'Brachioradialis', size: 'small' },
   abs: { name: 'Abs', size: 'small' },
   obliques: { name: 'Obliques', size: 'small' },
   glutes: { name: 'Glutes', size: 'large' },
