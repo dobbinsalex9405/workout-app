@@ -8,6 +8,7 @@ import type { Plan, SetEntry, SetType, Unit, Workout } from '../types';
 import { ExercisePicker } from '../components/ExercisePicker';
 import { StallSheet } from '../components/StallSheet';
 import { BUILD, PLATFORM, openUpdate, type UpdateInfo } from '../update';
+import { ExerciseSheet } from '../components/ExerciseSheet';
 import { Icon } from '../components/Icon';
 
 const TYPE_ORDER: SetType[] = ['normal', 'warmup', 'drop', 'failure'];
@@ -238,6 +239,7 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
   const [flash, setFlash] = useState(false);
   const card = useRef<HTMLElement>(null);
   const ex = useLiveQuery(() => db.exercises.get(exId), [exId]);
+  const [editing, setEditing] = useState(false);
 
   // Arrived here from "Log" in My exercises: bring this card into view and pulse it once.
   const focused = useRef(false);
@@ -282,7 +284,7 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
     await db.sets.add({ workoutId: workout.id!, exerciseId: exId, weight: kg, reps, type: draft.t, ts: Date.now(), prs });
     // After a warm-up, clear so the working-weight hint comes back; otherwise keep values for the next set.
     setDraft(draft.t === 'warmup' ? { w: '', r: '', t: 'normal' } : { w: wStr, r: rStr, t: draft.t });
-    if (prs.length) showPR({ exercise: ex?.name ?? '', kinds: prs, detail: `${fmtW(kg, unit)} ${unit} × ${reps}` });
+    if (prs.length) showPR({ exercise: ex?.name ?? '', kinds: ['Heaviest weight'], detail: `${fmtW(kg, unit)} ${unit} × ${reps}` });
   };
 
   const removeExercise = async () => {
@@ -306,6 +308,9 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
             <Icon name="alert" size={13} /> Stalled
           </button>
         )}
+        <button className="icon-btn" aria-label="Edit exercise" onClick={() => setEditing(true)}>
+          <Icon name="edit" size={17} />
+        </button>
         <button className="icon-btn" aria-label="Remove exercise" onClick={removeExercise}>
           <Icon name="close" size={18} />
         </button>
@@ -371,6 +376,7 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
       </div>
 
       {stallOpen && <StallSheet exId={exId} onClose={() => setStallOpen(false)} />}
+      {editing && <ExerciseSheet id={exId} onClose={() => setEditing(false)} />}
     </section>
   );
 }

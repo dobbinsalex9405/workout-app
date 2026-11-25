@@ -67,7 +67,7 @@ export interface SetEntry {
   reps: number;
   type: SetType;
   ts: number;
-  /** PR kinds this set broke when logged, e.g. ['Est. 1RM', 'Weight'] */
+  /** ['Weight'] when this set was a new heaviest weight for the exercise. */
   prs?: string[];
 }
 

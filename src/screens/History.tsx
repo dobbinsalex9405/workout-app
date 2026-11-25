@@ -7,10 +7,12 @@ import type { Unit } from '../types';
 import { Chart } from '../components/Chart';
 import { Heatmap } from '../components/Heatmap';
 import { Icon } from '../components/Icon';
+import { ExerciseSheet } from '../components/ExerciseSheet';
 
 export function HistoryScreen() {
   const [unit] = useLocal<Unit>('unit', 'lb');
   const [open, setOpen] = useState<number | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
   const data = useLiveQuery(async () => {
     const [workouts, sets, exs] = await Promise.all([
       db.workouts.orderBy('startedAt').reverse().filter((w) => !!w.endedAt).toArray(),
@@ -111,7 +113,10 @@ export function HistoryScreen() {
                   if (!xs.length) return null;
                   return (
                     <div key={id} className="hx">
-                      <b>{names.get(id)}</b>
+                      <button className="hx-name" onClick={() => setEditId(id)}>
+                        <b>{names.get(id)}</b>
+                        <Icon name="edit" size={13} className="dim" />
+                      </button>
                       <div className="hx-sets">
                         {xs.map((s) => (
                           <span key={s.id} className={`hx-set ${s.type} ${s.prs?.length ? 'pr' : ''}`}>
@@ -136,6 +141,7 @@ export function HistoryScreen() {
           </section>
         );
       })}
+      {editId != null && <ExerciseSheet id={editId} onClose={() => setEditId(null)} />}
     </div>
   );
 }

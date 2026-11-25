@@ -8,6 +8,7 @@ import type { Session, SetEntry, Unit } from '../types';
 import { Chart, Sparkline } from '../components/Chart';
 import { StallSheet } from '../components/StallSheet';
 import { Icon } from '../components/Icon';
+import { ExerciseSheet } from '../components/ExerciseSheet';
 
 type Range = '1M' | '3M' | '6M' | '1Y' | 'All';
 const RANGES: Range[] = ['1M', '3M', '6M', '1Y', 'All'];
@@ -95,6 +96,7 @@ function Detail({ exId, onBack }: { exId: number; onBack: () => void }) {
   const [unit] = useLocal<Unit>('unit', 'lb');
   const [range, setRange] = useLocal<Range>('progress.range', '3M');
   const [stallOpen, setStallOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const ex = useLiveQuery(() => db.exercises.get(exId), [exId]);
   const sets = useLiveQuery(() => db.sets.where('exerciseId').equals(exId).toArray(), [exId]) ?? [];
   const starts = useLiveQuery(workoutStarts, []);
@@ -115,8 +117,12 @@ function Detail({ exId, onBack }: { exId: number; onBack: () => void }) {
         <button className="btn ghost" onClick={onBack}>
           <Icon name="back" size={18} /> All
         </button>
-        <h2 className="ellipsis">{ex?.name}</h2>
+        <h2 className="ellipsis grow">{ex?.name}</h2>
+        <button className="icon-btn" aria-label="Edit exercise" onClick={() => setEditing(true)}>
+          <Icon name="edit" size={18} />
+        </button>
       </div>
+      {editing && <ExerciseSheet id={exId} onClose={() => setEditing(false)} />}
 
       {stall.stalled && (
         <button className="card stall-banner" onClick={() => setStallOpen(true)}>

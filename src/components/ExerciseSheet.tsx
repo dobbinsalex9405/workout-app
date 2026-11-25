@@ -85,6 +85,7 @@ function CreateExercise({ initialName, initialGroup, onClose, onCreated }: { ini
 
 function EditExercise({ id, onClose }: { id: number; onClose: () => void }) {
   const ex = useLiveQuery(() => db.exercises.get(id), [id]);
+  const [name, setName] = useState<string | null>(null);
   if (!ex) return null;
   const save = (patch: Partial<Exercise>) => db.exercises.update(id, patch);
 
@@ -97,7 +98,14 @@ function EditExercise({ id, onClose }: { id: number; onClose: () => void }) {
   return (
     <Sheet title="Edit exercise" onClose={onClose}>
       <label className="form-label">Name</label>
-      <input value={ex.name} onChange={(e) => save({ name: e.target.value })} />
+      <input
+        value={name ?? ex.name}
+        onChange={(e) => {
+          setName(e.target.value);
+          if (e.target.value.trim()) save({ name: e.target.value.trim() });
+        }}
+        onBlur={() => setName(null)}
+      />
       <p className="fine">Changes apply everywhere this exercise appears, including past history.</p>
 
       <button className={`toggle-row ${ex.mine ? 'on' : ''}`} onClick={() => save({ mine: !ex.mine })}>

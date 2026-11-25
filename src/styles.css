@@ -499,3 +499,7 @@ button.card:active { transform: scale(0.985); border-color: var(--line2); }
 .update-banner p { margin: 0 0 4px; line-height: 1.45; }
 .update-banner b { color: var(--ice); }
 .update-banner .btn { margin-top: 10px; }
+
+/* History: tap an exercise name to edit it */
+.hx-name { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 0; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.hx-name .dim { opacity: 0.5; }

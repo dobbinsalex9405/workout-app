@@ -25,6 +25,7 @@ export async function initDB() {
   if ((await db.exercises.count()) === 0) await db.exercises.bulkAdd(SEED);
   await migrateSeedV2();
   await migrateSeedV3();
+  await migratePRsV2();
   // One-time: seed "My exercises" with everything already in a plan or with logged sets.
   if (!localStorage.getItem('mine.v1')) {
     const used = new Set<number>([...(await db.plans.toArray()).flatMap((p) => p.exerciseIds), ...((await db.sets.orderBy('exerciseId').uniqueKeys()) as number[])]);
@@ -100,6 +101,29 @@ async function migrateSeedV3() {
     }
   });
   localStorage.setItem('seed.v3', '1');
+}
+
+/** One-time: re-mark past PRs so only new heaviest weights count (older builds also flagged e1RM and set volume). */
+async function migratePRsV2() {
+  if (localStorage.getItem('prs.v2')) return;
+  await db.transaction('rw', db.sets, async () => {
+    const all = (await db.sets.toArray()).sort((a, b) => a.ts - b.ts);
+    const best = new Map<number, number>();
+    const seen = new Set<number>();
+    for (const s of all) {
+      let prs: string[] = [];
+      const working = s.type !== 'warmup' && s.reps >= 1;
+      if (working) {
+        const b = best.get(s.exerciseId) ?? 0;
+        if (seen.has(s.exerciseId) && s.weight > 0 && s.weight > b + 0.01) prs = ['Weight'];
+        best.set(s.exerciseId, Math.max(b, s.weight));
+        seen.add(s.exerciseId);
+      }
+      const old = s.prs ?? [];
+      if (old.length !== prs.length || old.some((k, i) => k !== prs[i])) await db.sets.update(s.id!, { prs });
+    }
+  });
+  localStorage.setItem('prs.v2', '1');
 }
 
 export async function exportJSON(): Promise<string> {

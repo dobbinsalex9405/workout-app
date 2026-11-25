@@ -58,16 +58,15 @@ export function bestOf(sets: SetEntry[]): Best {
   return b;
 }
 
-/** Records a new set breaks versus everything before it. Never fires on the first-ever set. */
+/**
+ * A PR is a new heaviest weight for the exercise, nothing else (more reps or volume at the
+ * same weight don't count). Never fires on the first-ever set.
+ */
 export function detectPRs(prior: SetEntry[], weight: number, reps: number, type: SetEntry['type']): string[] {
   if (type === 'warmup' || reps < 1 || weight <= 0) return [];
   const b = bestOf(prior);
   if (b.count === 0) return [];
-  const out: string[] = [];
-  if (e1rm(weight, reps) > b.e1rm + 0.01) out.push('Est. 1RM');
-  if (weight > b.weight + 0.01) out.push('Weight');
-  if (weight * reps > b.setVolume + 0.01) out.push('Set volume');
-  return out;
+  return weight > b.weight + 0.01 ? ['Weight'] : [];
 }
 
 export interface PRRecord {
@@ -81,15 +80,9 @@ export function prTimeline(sets: SetEntry[]): PRRecord[] {
   const sorted = sets.filter(isWorking).sort((a, b) => a.ts - b.ts);
   const out: PRRecord[] = [];
   let bw = 0;
-  let be = 0;
   sorted.forEach((s, i) => {
-    const e = e1rm(s.weight, s.reps);
-    if (i > 0) {
-      if (e > be + 0.01) out.push({ ts: s.ts, kind: 'Est. 1RM', weight: s.weight, reps: s.reps });
-      if (s.weight > bw + 0.01) out.push({ ts: s.ts, kind: 'Weight', weight: s.weight, reps: s.reps });
-    }
+    if (i > 0 && s.weight > bw + 0.01) out.push({ ts: s.ts, kind: 'Heaviest', weight: s.weight, reps: s.reps });
     bw = Math.max(bw, s.weight);
-    be = Math.max(be, e);
   });
   return out.reverse();
 }
