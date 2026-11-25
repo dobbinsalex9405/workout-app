@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, deleteWorkout } from '../db';
-import { showPR, useLocal } from '../store';
+import { setLocal, showPR, useLocal } from '../store';
 import { detectPRs, e1rm, fmtDateLong, fmtW, fromDisplay, isWorking, stallInfo, toSessions, warmupFor } from '../calc';
 import { MUSCLES, WARMUP_DEFAULT_PCT } from '../science';
 import type { Plan, SetEntry, SetType, Unit, Workout } from '../types';
@@ -46,12 +46,54 @@ export async function logExerciseNow(exId: number) {
   localStorage.removeItem('scroll.workout'); // let the card scroll into view instead of restoring an old position
 }
 
+/** A running workout with no logged set for this long is ended automatically. */
+export const AUTO_END_MINUTES = 60;
+
+/**
+ * End a forgotten workout. The end time is set to the last logged set (not "now"), so
+ * duration stays honest. A workout with no sets at all is discarded instead.
+ * Safe to call often: on launch, on returning to the app, and once a minute.
+ */
+export async function autoEndStaleWorkout(now = Date.now()) {
+  const active = await db.workouts.filter((w) => !w.endedAt).first();
+  if (!active) return;
+  const sets = await db.sets.where('workoutId').equals(active.id!).toArray();
+  const lastTs = sets.length ? Math.max(...sets.map((s) => s.ts)) : active.startedAt;
+  if (now - lastTs < AUTO_END_MINUTES * 60000) return;
+  if (sets.length) {
+    await db.workouts.update(active.id!, { endedAt: lastTs });
+    setLocal('workout.autoEnded', { name: active.name, sets: sets.length, at: lastTs });
+  } else {
+    await deleteWorkout(active.id!);
+  }
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith(`draft.${active.id}.`))
+    .forEach((k) => localStorage.removeItem(k));
+}
+
 export function WorkoutScreen() {
   const [unit] = useLocal<Unit>('unit', 'lb');
   // undefined = still loading, null = no active workout
   const active = useLiveQuery(async () => (await db.workouts.filter((w) => !w.endedAt).first()) ?? null, []);
   if (active === undefined) return <div className="screen" />;
   return active ? <Active workout={active} unit={unit} /> : <Idle />;
+}
+
+/** One-time note after a forgotten workout was closed for you. */
+function AutoEndedNote() {
+  const [note, setNote] = useLocal<{ name: string; sets: number; at: number } | null>('workout.autoEnded', null);
+  if (!note) return null;
+  return (
+    <section className="card auto-ended">
+      <Icon name="info" size={18} />
+      <p className="grow sm">
+        <b>{note.name}</b> was ended automatically after {AUTO_END_MINUTES} minutes without a logged set. {note.sets} set{note.sets === 1 ? '' : 's'} saved; it's timed to your last set.
+      </p>
+      <button className="icon-btn sm" aria-label="Dismiss" onClick={() => setNote(null)}>
+        <Icon name="close" size={15} />
+      </button>
+    </section>
+  );
 }
 
 function Idle() {
@@ -61,6 +103,7 @@ function Idle() {
 
   return (
     <div className="screen">
+      <AutoEndedNote />
       <section className="card hero">
         <div className="hero-glow" />
         <span className="label">Ready</span>

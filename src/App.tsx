@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocal } from './store';
-import { WorkoutScreen } from './screens/Workout';
+import { WorkoutScreen, autoEndStaleWorkout } from './screens/Workout';
 import { PlansScreen } from './screens/Plans';
 import { ProgressScreen } from './screens/Progress';
 import { BodyScreen } from './screens/Body';
@@ -64,6 +64,19 @@ export default function App() {
       window.clearTimeout(t);
     };
   }, [tab]);
+
+  // Close a forgotten workout: on launch, when the app comes back to the front, and every minute.
+  useEffect(() => {
+    const check = () => void autoEndStaleWorkout();
+    check();
+    const t = window.setInterval(check, 60000);
+    const onVis = () => document.visibilityState === 'visible' && check();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
 
   const go = (id: string) => {
     if (id === tab) main.current?.scrollTo({ top: 0, behavior: 'smooth' });

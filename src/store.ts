@@ -48,6 +48,17 @@ export function useLocal<T>(key: string, init: T): [T, (v: T | ((p: T) => T)) =>
   return [value, set];
 }
 
+/** Set a persisted value from outside React (screens using `useLocal(key)` update immediately). */
+export function setLocal<T>(key: string, value: T) {
+  cache.set(key, value);
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage full */
+  }
+  listeners.get(key)?.forEach((f) => f());
+}
+
 /* ---------- PR flash (not persisted) ---------- */
 
 export interface PRFlashData {
