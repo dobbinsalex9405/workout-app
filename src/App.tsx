@@ -9,6 +9,7 @@ import { SettingsScreen } from './screens/Settings';
 import { PRFlash } from './components/PRFlash';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Icon, type IconName } from './components/Icon';
+import { checkForUpdate } from './update';
 
 const TABS: { id: string; label: string; icon: IconName }[] = [
   { id: 'workout', label: 'Workout', icon: 'workout' },
@@ -67,7 +68,10 @@ export default function App() {
 
   // Close a forgotten workout: on launch, when the app comes back to the front, and every minute.
   useEffect(() => {
-    const check = () => void autoEndStaleWorkout();
+    const check = () => {
+      void autoEndStaleWorkout();
+      void checkForUpdate();
+    };
     check();
     const t = window.setInterval(check, 60000);
     const onVis = () => document.visibilityState === 'visible' && check();

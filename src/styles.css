@@ -492,3 +492,10 @@ button.card:active { transform: scale(0.985); border-color: var(--line2); }
 .auto-ended > .icon-svg { color: var(--cyan); flex: none; margin-top: 2px; }
 .auto-ended p { margin: 0; line-height: 1.45; }
 .auto-ended b { color: var(--ice); }
+
+/* Update banner */
+.update-banner { flex-direction: row; align-items: flex-start; gap: 10px; border-color: rgba(53, 200, 255, 0.45); }
+.update-banner > .icon-svg { color: var(--cyan); flex: none; margin-top: 2px; }
+.update-banner p { margin: 0 0 4px; line-height: 1.45; }
+.update-banner b { color: var(--ice); }
+.update-banner .btn { margin-top: 10px; }

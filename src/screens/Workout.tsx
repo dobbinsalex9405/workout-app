@@ -7,6 +7,7 @@ import { MUSCLES, WARMUP_DEFAULT_PCT } from '../science';
 import type { Plan, SetEntry, SetType, Unit, Workout } from '../types';
 import { ExercisePicker } from '../components/ExercisePicker';
 import { StallSheet } from '../components/StallSheet';
+import { BUILD, PLATFORM, openUpdate, type UpdateInfo } from '../update';
 import { Icon } from '../components/Icon';
 
 const TYPE_ORDER: SetType[] = ['normal', 'warmup', 'drop', 'failure'];
@@ -96,6 +97,30 @@ function AutoEndedNote() {
   );
 }
 
+function UpdateBanner() {
+  const [info] = useLocal<UpdateInfo | null>('update.available', null);
+  const [dismissed, setDismissed] = useLocal('update.dismissed', 0);
+  if (!info || info.build <= BUILD || dismissed >= info.build) return null;
+  return (
+    <section className="card update-banner">
+      <Icon name="download" size={18} />
+      <div className="grow">
+        <p className="sm">
+          <b>Update available</b> · build {info.build}
+          {info.notes && <span className="muted"> · {info.notes}</span>}
+        </p>
+        <small className="muted">{PLATFORM === 'ios' ? 'Opens AltStore: tap Update under My Apps.' : 'Downloads the new APK; install it over this one. Your data stays.'}</small>
+        <button className="btn primary" onClick={openUpdate}>
+          {PLATFORM === 'ios' ? 'Open AltStore' : 'Download update'}
+        </button>
+      </div>
+      <button className="icon-btn sm" aria-label="Later" onClick={() => setDismissed(info.build)}>
+        <Icon name="close" size={15} />
+      </button>
+    </section>
+  );
+}
+
 function Idle() {
   const plans = useLiveQuery(() => db.plans.orderBy('createdAt').toArray(), []) ?? [];
   const names = useLiveQuery(async () => new Map((await db.exercises.toArray()).map((e) => [e.id!, e.name])), []);
@@ -103,6 +128,7 @@ function Idle() {
 
   return (
     <div className="screen">
+      <UpdateBanner />
       <AutoEndedNote />
       <section className="card hero">
         <div className="hero-glow" />

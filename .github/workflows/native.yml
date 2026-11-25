@@ -35,6 +35,8 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npm run build
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
       - run: npx cap sync android
       - name: Build release APK
         working-directory: android
@@ -72,6 +74,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
       - run: npx cap sync ios
       - name: Build unsigned app
         run: |
@@ -102,7 +106,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "build-${{ github.run_number }}" WorkoutApp.apk WorkoutApp.ipa             --repo "${{ github.repository }}" --target "${{ github.sha }}"             --title "Build ${{ github.run_number }}"             --notes "Android: send WorkoutApp.apk. iPhone: update from the AltStore source, or sideload WorkoutApp.ipa with AltServer."
+          NL=$(printf '\n_'); NL=${NL%_}
+          gh release create "build-${{ github.run_number }}" WorkoutApp.apk WorkoutApp.ipa             --repo "${{ github.repository }}" --target "${{ github.sha }}"             --title "Build ${{ github.run_number }}"             --notes "What's new: $(git log -1 --format=%s)${NL}${NL}Android: send WorkoutApp.apk. iPhone: update from the AltStore source, or sideload WorkoutApp.ipa with AltServer."
       # AltStore source: a tiny "app store" listing. Add the URL in AltStore once
       # (Browse -> Sources -> +) and new builds show up as updates in My Apps.
       - name: Build AltStore source

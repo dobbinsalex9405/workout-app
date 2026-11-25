@@ -4,6 +4,7 @@ import { useLocal } from '../store';
 import { REFERENCES, WARMUP_DEFAULT_PCT } from '../science';
 import type { Unit } from '../types';
 import { Icon } from '../components/Icon';
+import { BUILD, PLATFORM, canUpdate, checkForUpdate, openUpdate } from '../update';
 
 export function SettingsScreen({ onClose }: { onClose: () => void }) {
   const [unit, setUnit] = useLocal<Unit>('unit', 'lb');
@@ -102,6 +103,8 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
             {msg && <div className="msg">{msg}</div>}
           </section>
 
+          <AppVersion />
+
           <section className="card">
             <span className="label">
               <Icon name="book" size={14} /> The science
@@ -130,5 +133,43 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function AppVersion() {
+  const [status, setStatus] = useState('');
+  const [newer, setNewer] = useState(0);
+  const check = async () => {
+    setStatus('Checking…');
+    const r = await checkForUpdate(true);
+    if (r === 'error') setStatus("Couldn't reach GitHub. Check your connection.");
+    else if (r) {
+      setNewer(r.build);
+      setStatus(`Build ${r.build} is available${r.notes ? `: ${r.notes}` : '.'}`);
+    } else setStatus("You're on the latest build.");
+  };
+  return (
+    <section className="card">
+      <div className="row-between">
+        <span className="label">App version</span>
+        <b className="mono">{BUILD ? `build ${BUILD}` : 'web'}</b>
+      </div>
+      {canUpdate() ? (
+        <>
+          <small className="muted">Checks for new builds automatically every few hours. Updating keeps your data.</small>
+          <button className="btn secondary big" onClick={check}>
+            Check for updates
+          </button>
+          {newer > 0 && (
+            <button className="btn primary big" onClick={openUpdate}>
+              {PLATFORM === 'ios' ? 'Open AltStore' : 'Download update'}
+            </button>
+          )}
+          {status && <div className="msg">{status}</div>}
+        </>
+      ) : (
+        <small className="muted">The web version updates itself when you reload.</small>
+      )}
+    </section>
   );
 }
