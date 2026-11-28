@@ -187,7 +187,9 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
       if (t < TOTAL) raf = requestAnimationFrame(frame);
       else finish();
     };
-    raf = requestAnimationFrame(frame);
+    // Frozen test frames are drawn right away (headless screenshots may not run animation frames).
+    if (!Number.isNaN(frozen)) frame(performance.now());
+    else raf = requestAnimationFrame(frame);
     // Safety net: if the phone isn't painting frames (app opened in the background, webview
     // paused), never leave the intro covering the app.
     const bail = Number.isNaN(frozen) ? window.setTimeout(finish, (reduce ? 1300 : TOTAL) + 700) : 0;
