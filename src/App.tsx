@@ -12,6 +12,8 @@ import { Icon, type IconName } from './components/Icon';
 import { checkForUpdate } from './update';
 import { flushFeedback } from './feedback';
 import { LaunchIntro } from './components/LaunchIntro';
+import { Guide, WHATS_NEW_ID } from './components/Guide';
+import { db } from './db';
 
 const TABS: { id: string; label: string; icon: IconName }[] = [
   { id: 'workout', label: 'Workout', icon: 'workout' },
@@ -32,6 +34,23 @@ export default function App() {
     sessionStorage.setItem('intro.shown', '1');
     setIntro(false);
   }, []);
+
+  // Guide / What's new: opened from the top bar or Settings, and once automatically.
+  const [guide, setGuide] = useLocal<'guide' | 'whatsnew' | null>('ui.guide', null);
+  useEffect(() => {
+    if (intro) return;
+    if (localStorage.getItem('whatsnew.seen') === WHATS_NEW_ID) return;
+    void db.workouts.count().then((n) => {
+      // New here: the full guide. Been using the app: just what changed.
+      if (!localStorage.getItem('guide.seen') && n === 0) setGuide('guide');
+      else setGuide('whatsnew');
+    });
+  }, [intro, setGuide]);
+  const closeGuide = () => {
+    localStorage.setItem('guide.seen', '1');
+    localStorage.setItem('whatsnew.seen', WHATS_NEW_ID);
+    setGuide(null);
+  };
   const idx = Math.max(0, TABS.findIndex((t) => t.id === tab));
 
   // Restore scroll position per tab (survives reloads), and remember it as you scroll.
@@ -103,6 +122,9 @@ export default function App() {
         <h1 key={tab} className="topbar-title">
           {TABS[idx].label}
         </h1>
+        <button className="icon-btn" aria-label="Guide" onClick={() => setGuide('guide')}>
+          <Icon name="book" size={21} />
+        </button>
         <button className="icon-btn" aria-label="Settings" onClick={() => setSettings(true)}>
           <Icon name="settings" size={22} />
         </button>
@@ -129,6 +151,7 @@ export default function App() {
       </nav>
       {settings && <SettingsScreen onClose={() => setSettings(false)} />}
       <PRFlash />
+      {guide && !intro && <Guide whatsNew={guide === 'whatsnew'} onClose={closeGuide} />}
       {intro && <LaunchIntro onDone={endIntro} />}
     </div>
   );

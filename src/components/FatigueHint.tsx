@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SetEntry, Unit } from '../types';
-import { fmtW, fromDisplay } from '../calc';
-import { FATIGUE, effReps, fatigueProfile, predictReps, predictionRange, rirOf, todayVsUsual } from '../fatigue';
+import { fmtW, fromDisplay, roundLoad, toDisplay } from '../calc';
+import { FATIGUE, capacity, effReps, fatigueProfile, predictReps, predictionRange, priorLoss, rirOf, todayVsUsual } from '../fatigue';
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 /**
- * Under an exercise during a workout: how many reps to expect on the next set, given how long
- * you've rested so far, learned from your own history on this exercise. Stays quiet (or says it's
- * still learning) until replaying your past sessions shows predictions are reliable for you.
+ * Rest planner under an exercise during a workout. Type the weight you're about to lift (and,
+ * optionally, the reps you're going for) and it estimates reps, a sensible rest, and how long
+ * to rest to hit your target. Learned from your own history on this exercise; stays quiet (or
+ * says it's still learning) until replaying your past sessions shows it's reliable for you.
  */
-export function FatigueHint({ all, today, draftW, unit }: { all: SetEntry[]; today: SetEntry[]; draftW: string; unit: Unit }) {
+export function FatigueHint({ all, today, draftW, draftR, unit }: { all: SetEntry[]; today: SetEntry[]; draftW: string; draftR: string; unit: Unit }) {
   const profile = useMemo(() => fatigueProfile(all), [all]);
   const main = today.filter((s) => s.type !== 'warmup' && s.parent == null && s.reps >= 1);
   const last = main[main.length - 1];
@@ -41,24 +42,51 @@ export function FatigueHint({ all, today, draftW, unit }: { all: SetEntry[]; tod
   const typed = Number(draftW);
   const weightKg = typed > 0 ? fromDisplay(typed, unit) : last.weight;
   const prev = { weight: last.weight, reps: effReps(last) };
-  const rir = rirOf(last);
-  const toFail = predictReps(profile.scale, prev, restS, weightKg);
-  const r = predictionRange(profile, toFail);
-  const in60 = predictionRange(profile, predictReps(profile.scale, prev, restS + 60, weightKg));
+  // Plan at the same effort as the last set: if you left 2 in the tank, assume you will again.
+  const rir = Math.min(4, rirOf(last) ?? 0);
+  const repsAtRest = (s: number) => predictReps(profile.scale, prev, s, weightKg) - rir;
+
+  const r = predictionRange(profile, repsAtRest(restS));
+  // Suggested rest: where another minute adds less than ~a third of a rep (bounded 1–5 min).
+  let suggest = 60;
+  while (suggest < 300 && repsAtRest(suggest + 60) - repsAtRest(suggest) >= 0.3) suggest += 15;
+  // Weight that gives `reps` after the suggested rest (at the same effort as last set).
+  const weightFor = (reps: number) => {
+    const cap = capacity(prev.weight, prev.reps) * (1 - profile.scale * priorLoss(Math.max(suggest, restS)));
+    return roundLoad(toDisplay(cap / (1 + (reps + rir) / 30), unit), unit);
+  };
+  const atSuggest = Math.round(repsAtRest(Math.max(suggest, restS)));
+
+  // Target reps typed in: how long until you can hit them?
+  const target = Math.floor(Number(draftR));
+  let plan: string | null = null;
+  if (target > 0) {
+    let need = -1;
+    for (let s = 30; s <= FATIGUE.maxRestS; s += 5) {
+      if (Math.round(repsAtRest(s)) >= target) {
+        need = s;
+        break;
+      }
+    }
+    if (need < 0) plan = `${target} reps is unlikely at this weight today. ~${weightFor(target)} ${unit} should get you there.`;
+    else if (need <= restS) plan = `Ready for ${target} reps now.`;
+    else if (need > 300) plan = `${target} reps needs a long rest (~${mmss(need)}). Or use ~${weightFor(target)} ${unit} after ~${mmss(Math.max(suggest, restS))}.`;
+    else plan = `For ${target} reps: rest until ~${mmss(need)} (${mmss(need - restS)} more).`;
+  }
+
   const vs = todayVsUsual(today, profile.scale);
-  // With RIR the model thinks in "reps to failure"; show what that means at the RIR you just used.
-  const atRir = rir != null && rir > 0 ? Math.max(0, r.reps - Math.min(rir, 4)) : null;
   return (
     <div className="fatigue-hint">
       <div>
-        Next set at {fmtW(weightKg, unit)} {unit}: <b>~{r.reps} reps{rir != null ? ' to failure' : ''}</b> <span className="muted">({r.lo}–{r.hi})</span>
-        {atRir != null && <span className="muted"> · ~{atRir} at RIR {Math.min(rir!, 4)}</span>}
+        {typed > 0 ? 'At' : 'Next set at'} {fmtW(weightKg, unit)} {unit}: <b>~{r.reps} reps now</b> <span className="muted">({r.lo}–{r.hi}{rir > 0 ? `, at RIR ${rir}` : rirOf(last) === 0 ? ', to failure' : ''})</span>
       </div>
       <small className="muted">
         Rested {mmss(restS)}
-        {in60.reps > r.reps ? ` · another minute → ~${in60.reps}` : ''}
+        {restS < suggest - 10 ? ` · suggested rest ~${mmss(suggest)} → ~${atSuggest} reps` : ' · more rest adds little now'}
         {profile.targetStyle ? ' · based on how you usually stop at a target' : ''}
       </small>
+      {plan && <small className="plan-text">{plan}</small>}
+      {!typed && !target && <small className="muted">Type your next weight (and target reps) to plan the set.</small>}
       {vs && vs.ratio >= 1.6 && <small className="warn-text">Dropping off faster than usual today. Rest longer, or call it for this exercise.</small>}
     </div>
   );

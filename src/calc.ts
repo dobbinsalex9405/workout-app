@@ -5,6 +5,7 @@ import {
   FAILURE_EXTRA_HOURS,
   FOLLOWUP_SET,
   NEAR_FAILURE_TYPES,
+  RIR_FACTOR,
   FATIGUE_SCALE_SETS,
   LOAD_INCREASE,
   MUSCLES,
@@ -238,8 +239,9 @@ export function muscleStats(sets: SetEntry[], exMap: Map<number, Exercise>, now:
     if (!ex) continue;
     const age = now - s.ts;
     if (age < 0) continue;
-    const extra = (NEAR_FAILURE_TYPES as readonly string[]).includes(s.type) ? FAILURE_EXTRA_HOURS : 0;
-    const k = isFollowup(s) ? FOLLOWUP_SET : 1;
+    const toFailure = (NEAR_FAILURE_TYPES as readonly string[]).includes(s.type) || s.rir === 0;
+    const extra = toFailure ? FAILURE_EXTRA_HOURS : 0;
+    const k = (isFollowup(s) ? FOLLOWUP_SET : 1) * (s.rir != null ? RIR_FACTOR(s.rir) : 1);
     const apply = (m: Muscle, w0: number) => {
       const w = w0 * k;
       const o = out[m];

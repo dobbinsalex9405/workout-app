@@ -56,6 +56,14 @@ export const FOLLOWUP_SET = 0.5;
 /** Set types that are taken to (or very near) failure, so they get the longer recovery. */
 export const NEAR_FAILURE_TYPES = ['failure', 'drop', 'myo'] as const;
 
+/**
+ * How much a set counts toward fatigue and weekly hard sets, by reps in reserve (when logged).
+ * Sets 0–3 RIR count fully; growth stimulus and fatigue fall off further from failure
+ * (Robinson 2024 dose-response). RIR 0 also gets the to-failure recovery extension.
+ * Unlogged RIR = counted as a normal hard set, as before.
+ */
+export const RIR_FACTOR = (rir: number) => (rir <= 3 ? 1 : rir === 4 ? 0.85 : 0.7);
+
 /** Suggested weight for the next drop: cut ~20–25%. */
 export const DROP_FACTOR = 0.8;
 
@@ -131,6 +139,13 @@ export interface Ref {
 }
 
 export const REFERENCES: Ref[] = [
+  {
+    topic: 'Proximity to failure',
+    claim: 'Growth falls off as sets end further from failure; 0–3 reps in reserve all work well. Sets logged at RIR 4 count 85%, 4+ count 70%.',
+    cite: 'Robinson et al. (2024). Sports Med 54.',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/?term=Robinson+2024+proximity+to+failure+dose-response+meta-regression',
+    confidence: 'Moderate',
+  },
   {
     topic: 'Fatigue between sets',
     claim: 'Reps drop more between sets with short rest (1 min) than long rest (3–5 min). The app starts from this curve and learns how you differ on each exercise.',

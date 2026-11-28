@@ -413,7 +413,7 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
         </button>
       )}
 
-      {!head && <FatigueHint all={all} today={sets} draftW={draft.w} unit={unit} />}
+      {!head && <FatigueHint all={all} today={sets} draftW={draft.w} draftR={draft.r} unit={unit} />}
 
       {head && (
         <div className={`chain-bar ${head.type}`}>

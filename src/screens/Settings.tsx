@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { db, exportJSON, importJSON, initDB } from '../db';
-import { useLocal } from '../store';
+import { setLocal, useLocal } from '../store';
 import { REFERENCES, WARMUP_DEFAULT_PCT } from '../science';
 import type { Unit } from '../types';
 import { Icon } from '../components/Icon';
@@ -89,6 +89,16 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
             </div>
             <input type="range" min={0.5} max={0.8} step={0.05} value={warmPct} onChange={(e) => setWarmPct(Number(e.target.value))} aria-label="Warm-up percentage" />
             <small className="muted">One lighter set before your first working set, rounded to loadable plates. 60–80% is the evidence-backed range; one very light set did worst in testing.</small>
+          </section>
+
+          <section className="card">
+            <span className="label">Help</span>
+            <button className="btn secondary big" onClick={() => setLocal('ui.guide', 'guide')}>
+              <Icon name="book" size={18} /> Guide: how MyoForge works
+            </button>
+            <button className="btn secondary big" onClick={() => setLocal('ui.guide', 'whatsnew')}>
+              <Icon name="star" size={18} /> What's new
+            </button>
           </section>
 
           <section className="card">

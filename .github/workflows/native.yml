@@ -7,12 +7,18 @@ name: Native builds
 # Releases are batched: pushing to main does NOT ship an update (other people use the app).
 # When enough changes have piled up, run this workflow by hand with a one-line summary:
 #   gh workflow run native.yml -f summary="New PR rules, edit exercises, brachioradialis"
+# Test build for the developer's own phone only (pre-release, nobody else is notified):
+#   gh workflow run native.yml -f summary="..." -f beta=true
 on:
   workflow_dispatch:
     inputs:
       summary:
         description: One-line "What's new" shown in the in-app update banner
         required: true
+      beta:
+        description: Test build only (pre-release). Not shown to users, banner or AltStore.
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -119,10 +125,16 @@ jobs:
             echo
             echo "Android: send WorkoutApp.apk. iPhone: update from the AltStore source, or sideload WorkoutApp.ipa with AltServer."
           } > notes.md
-          gh release create "build-${{ github.run_number }}" WorkoutApp.apk WorkoutApp.ipa --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Build ${{ github.run_number }}" --notes-file notes.md
+          if [ "${{ inputs.beta }}" = "true" ]; then
+            # Pre-release: "latest" (used by the update banner and APK link) skips these.
+            gh release create "beta-${{ github.run_number }}" WorkoutApp.apk WorkoutApp.ipa --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Beta ${{ github.run_number }}" --notes-file notes.md --prerelease
+          else
+            gh release create "build-${{ github.run_number }}" WorkoutApp.apk WorkoutApp.ipa --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Build ${{ github.run_number }}" --notes-file notes.md
+          fi
       # AltStore source: a tiny "app store" listing. Add the URL in AltStore once
       # (Browse -> Sources -> +) and new builds show up as updates in My Apps.
       - name: Build AltStore source
+        if: ${{ !inputs.beta }}
         env:
           SUMMARY: ${{ inputs.summary }}
         run: |
@@ -161,11 +173,13 @@ jobs:
             }' > site/source.json
           cat site/source.json
       - uses: actions/upload-pages-artifact@v3
+        if: ${{ !inputs.beta }}
         with:
           path: site
 
   pages:
     needs: release
+    if: ${{ !inputs.beta }}
     runs-on: ubuntu-latest
     permissions:
       pages: write

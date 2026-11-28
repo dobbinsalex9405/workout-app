@@ -28,11 +28,13 @@ const ANVIL: Shape = {
   top: [
     [212, 436, 256, 422, 300, 414], // horn
     [325, 410, 350, 407, 372, 406],
-    [420, 404, 470, 401, 520, 400], // face
-    [550, 399, 580, 398, 604, 398],
-    [630, 397, 670, 396, 700, 395],
-    [740, 394, 780, 393, 800, 393],
-    [820, 392, 840, 392, 860, 392],
+    [400, 405, 430, 403, 460, 402], // face
+    [490, 401, 520, 400, 550, 399],
+    [570, 399, 590, 398, 610, 398],
+    [630, 397, 650, 397, 670, 396],
+    [690, 396, 710, 395, 730, 395],
+    [760, 394, 790, 393, 820, 393],
+    [833, 392, 846, 392, 860, 392],
     [860, 420, 860, 450, 860, 476], // heel front
     [790, 478, 712, 486, 668, 512], // heel underside
   ],
@@ -44,13 +46,15 @@ const ARM: Shape = {
   top: [
     [176, 466, 184, 410, 240, 392], // deltoid
     [290, 330, 360, 262, 450, 262], // bicep rising to the peak
-    [540, 262, 584, 290, 590, 336], // peak dropping into the elbow crease
-    [596, 300, 594, 258, 598, 228], // inner forearm up to the wrist
-    [578, 212, 566, 166, 574, 140], // fist: thumb side, wider than the wrist
-    [580, 112, 604, 102, 640, 102], // fist: rounded corner
-    [690, 102, 740, 104, 748, 132], // fist: flat knuckles
-    [756, 170, 730, 214, 744, 252], // fist into the wrist
-    [790, 330, 840, 500, 668, 512], // outer forearm and elbow
+    [540, 262, 584, 290, 590, 336], // peak into the elbow crease
+    [598, 310, 606, 280, 614, 252], // inner forearm up to the wrist
+    [622, 250, 632, 248, 642, 248], // wrist (the fist sits on top)
+    [656, 247, 670, 247, 684, 247],
+    [698, 247, 710, 248, 722, 249],
+    [726, 250, 730, 252, 734, 256],
+    [742, 276, 750, 290, 756, 306], // outer forearm
+    [764, 336, 780, 366, 782, 402],
+    [786, 470, 742, 506, 668, 512], // elbow
   ],
 };
 const CLOSE_ANVIL: Seg = [330, 480, 252, 470, 168, 452];
@@ -80,13 +84,28 @@ function pathAt(p: number) {
 }
 
 const HIT: [number, number] = [520, 400];
+/** Hammer pose: translate, rotate, scale, then swing about the grip. */
+type Pose = { x: number; y: number; r: number; k: number; a: number };
+const STRIKE: Pose = { x: HIT[0], y: HIT[1], r: -24, k: 1.15, a: 0 };
+/** Held upright in the fist: handle straight down, dumbbell head on top. */
+const HELD: Pose = { x: 563, y: 0, r: 90, k: 1, a: 0 };
+const poseStr = (p: Pose) => `translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${p.r.toFixed(2)}) scale(${p.k.toFixed(3)}) rotate(${p.a.toFixed(2)} 208 -105)`;
+/** The fist: palm, four fingers wrapped around the handle, thumb over the top. */
+const FIST: { x: number; y: number; w: number; h: number; r: number }[] = [
+  { x: 640, y: 106, w: 116, h: 150, r: 30 }, // back of the hand
+  { x: 578, y: 110, w: 120, h: 36, r: 18 },
+  { x: 574, y: 145, w: 122, h: 36, r: 18 },
+  { x: 576, y: 180, w: 118, h: 36, r: 18 },
+  { x: 584, y: 215, w: 108, h: 36, r: 18 },
+];
+const THUMB = 'M 608 112 C 624 90 670 86 716 98 L 716 124 C 678 116 640 118 608 130 Z';
 const SPARKS = Array.from({ length: 9 }, (_, i) => {
   const a = (-170 + i * (160 / 8)) * (Math.PI / 180); // fan above the strike
   return { dx: Math.cos(a), dy: Math.sin(a), dist: 190 + (i % 3) * 70, len: 44 + (i % 2) * 26 };
 });
 
 // Timeline (ms)
-const T = { draw: [0, 520], hammerIn: [260, 500], swing: [520, 700], hit: 700, morph: [780, 1300], fibers: [1180, 1480], word: [1220, 1580], out: [2050, 2380] };
+const T = { draw: [0, 520], hammerIn: [260, 500], swing: [520, 700], hit: 700, fly: [820, 1260], morph: [780, 1300], grip: [1180, 1400], fibers: [1250, 1550], word: [1300, 1650], out: [2150, 2480] };
 const TOTAL = T.out[1];
 
 export function LaunchIntro({ onDone }: { onDone: () => void }) {
@@ -99,6 +118,7 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
   const flash = useRef<SVGCircleElement>(null);
   const sparks = useRef<SVGGElement>(null);
   const fibers = useRef<SVGGElement>(null);
+  const fist = useRef<SVGGElement>(null);
   const word = useRef<HTMLDivElement>(null);
   const done = useRef(false);
 
@@ -126,7 +146,9 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
         s(shape.current, 'stroke-dashoffset', 0);
         s(fill.current, 'opacity', 1);
         s(fibers.current, 'opacity', 1);
-        s(hammer.current, 'opacity', 0);
+        s(hammer.current, 'opacity', 1);
+        s(hammer.current, 'transform', poseStr(HELD));
+        fist.current?.querySelectorAll('g').forEach((g) => s(g, 'opacity', 1));
         if (word.current) word.current.style.opacity = '1';
         const o = t < 300 ? t / 300 : t > 1000 ? 1 - (t - 1000) / 300 : 1;
         if (root.current) root.current.style.opacity = String(clamp01(o));
@@ -140,12 +162,32 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
       s(fill.current, 'opacity', span(t, 300, 620));
       s(halo.current, 'opacity', 0.55 * span(t, 300, 620));
 
-      // 2. hammer appears raised, swings down, recoils and fades
+      // 2. hammer appears raised, swings down, bounces off, and flies up into the new hand
       const swing = easeIn(span(t, T.swing[0], T.swing[1]));
-      const recoil = easeOut(span(t, T.hit, T.hit + 260));
-      const angle = t < T.hit ? lerp(62, 0, swing) : lerp(0, 16, recoil);
-      s(hammer.current, 'transform', `translate(${HIT[0]} ${HIT[1]}) rotate(-24) scale(1.15) rotate(${angle.toFixed(2)} 208 -105)`);
-      s(hammer.current, 'opacity', t < T.hit ? span(t, T.hammerIn[0], T.hammerIn[1]) : 1 - span(t, T.hit + 120, T.hit + 380));
+      const recoil = easeOut(span(t, T.hit, T.fly[0]));
+      const angle = t < T.hit ? lerp(62, 0, swing) : lerp(0, 18, recoil);
+      let pose: Pose = { ...STRIKE, a: angle };
+      if (t >= T.fly[0]) {
+        const f = span(t, T.fly[0], T.fly[1]);
+        const e = f < 0.5 ? 4 * f * f * f : 1 - (-2 * f + 2) ** 3 / 2; // ease in-out
+        pose = {
+          x: lerp(STRIKE.x, HELD.x, e),
+          y: lerp(STRIKE.y, HELD.y, e) - 90 * Math.sin(Math.PI * e), // a little lob
+          r: lerp(STRIKE.r, HELD.r, e),
+          k: lerp(STRIKE.k, HELD.k, e),
+          a: lerp(18, 0, e),
+        };
+      }
+      s(hammer.current, 'transform', poseStr(pose));
+      s(hammer.current, 'opacity', span(t, T.hammerIn[0], T.hammerIn[1]));
+
+      // the fingers close around the handle one after another
+      fist.current?.querySelectorAll('g').forEach((g, i) => {
+        const g0 = T.grip[0] + i * 40;
+        const v = easeOut(span(t, g0, g0 + 140));
+        s(g, 'opacity', v);
+        s(g, 'transform', `translate(${((1 - v) * 26).toFixed(1)} 0)`);
+      });
 
       // 3. impact: flash, sparks, shake
       const h = span(t, T.hit, T.hit + 420);
@@ -208,7 +250,7 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
   return (
     <div ref={root} className="launch-intro" onClick={skip} role="presentation" aria-hidden="true">
       <div ref={stage} className="launch-stage">
-        <svg viewBox="80 60 860 720" className="launch-art">
+        <svg viewBox="80 -70 860 850" className="launch-art">
           <defs>
             <linearGradient id="li-edge" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor="#e6f7ff" />
@@ -261,6 +303,17 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
           <g ref={hammer} opacity="0">
             <use href="#li-hammer" fill="url(#li-body)" />
             <use href="#li-hammer" fill="none" stroke="url(#li-edge)" strokeWidth="9" strokeLinejoin="round" />
+          </g>
+
+          <g ref={fist}>
+            {FIST.map((f, i) => (
+              <g key={i} opacity="0">
+                <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={f.r} fill="url(#li-body)" stroke="url(#li-edge)" strokeWidth="9" />
+              </g>
+            ))}
+            <g opacity="0">
+              <path d={THUMB} fill="url(#li-body)" stroke="url(#li-edge)" strokeWidth="9" strokeLinejoin="round" />
+            </g>
           </g>
         </svg>
         <div ref={word} className="launch-word" style={{ opacity: 0 }}>

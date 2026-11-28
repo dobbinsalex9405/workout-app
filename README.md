@@ -46,6 +46,23 @@ npm run sync             # build + copy web code into both native projects
 
 A free Apple ID signs iOS builds for 7 days; the $99/yr account gives TestFlight builds (90 days).
 
+## Set types, RIR and the rest planner
+
+- **Set types** (tap the type button; each has a ? help): Set, Warm-up, Drop set, Myo-reps, To failure.
+  Drops and myo mini-sets are linked to their first set (`parent`). First set = 1 hard set, each
+  drop/mini-set = 0.5 (`FOLLOWUP_SET`); drop/myo/failure get the to-failure recovery extension.
+  Only first sets count for PRs, e1RM, stalls and set counts.
+- **RIR** chip on each set (optional, 0–4+). Body map: RIR 0–3 = full set, 4 = 0.85, 4+ = 0.7 (`RIR_FACTOR`).
+- **Rest planner** (`src/fatigue.ts`, `FatigueHint`): learns per exercise how much capacity a set costs
+  at a given rest (research curve × personal multiplier), replays history to measure its own accuracy,
+  and only shows predictions when 80% land within 2.5 reps. `npm test` runs simulated-lifter checks.
+- **Guide** (book icon in the top bar, Settings → Help) and a one-time "What's new" (`WHATS_NEW_ID`).
+
+## Releases
+
+Pushing to main does not ship. `gh workflow run native.yml -f summary="..."` makes a public build
+(update banner + AltStore). Add `-f beta=true` for a pre-release only the developer installs.
+
 ## Feedback
 
 Settings has a Feedback form (Bug / Idea / Other, optional contact). Messages go straight to the
