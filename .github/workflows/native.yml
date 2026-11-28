@@ -131,16 +131,16 @@ jobs:
           mkdir -p site
           cp assets/icon-only.png site/icon.png
           jq -n             --arg site "$SITE"             --arg version "1.0.${{ github.run_number }}"             --arg build "${{ github.run_number }}"             --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)"             --arg notes "$SUMMARY"             --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/build-${{ github.run_number }}/WorkoutApp.ipa"             --argjson size "$(stat -c%s WorkoutApp.ipa)"             --arg repo "https://github.com/${GITHUB_REPOSITORY}"             '{
-              name: "Workout App",
+              name: "MyoForge",
               identifier: "com.workoutapp.source",
-              subtitle: "Private builds of Workout App",
+              subtitle: "Test builds of MyoForge",
               iconURL: ($site + "/icon.png"),
               website: $repo,
               tintColor: "#2F7BFF",
               apps: [{
-                name: "Workout App",
+                name: "MyoForge",
                 bundleIdentifier: "com.workoutapp.app",
-                developerName: "Workout App",
+                developerName: "MyoForge",
                 subtitle: "On-device workout tracker",
                 localizedDescription: "Log lifts, track PRs and stalls, see fatigue and volume on a muscle map. All data stays on your phone.",
                 iconURL: ($site + "/icon.png"),

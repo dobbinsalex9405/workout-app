@@ -133,7 +133,7 @@ export async function exportJSON(): Promise<string> {
 
 export async function importJSON(text: string) {
   const data = JSON.parse(text);
-  if (data?.app !== 'workout-app') throw new Error('Not a Workout App backup file');
+  if (data?.app !== 'workout-app') throw new Error('Not a MyoForge backup file');
   await db.transaction('rw', [db.exercises, db.workouts, db.sets, db.plans], async () => {
     await Promise.all([db.exercises.clear(), db.workouts.clear(), db.sets.clear(), db.plans.clear()]);
     await db.exercises.bulkPut(data.exercises ?? []);

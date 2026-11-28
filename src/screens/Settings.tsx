@@ -10,6 +10,7 @@ import { sendFeedback, type FeedbackCategory } from '../feedback';
 export function SettingsScreen({ onClose }: { onClose: () => void }) {
   const [unit, setUnit] = useLocal<Unit>('unit', 'lb');
   const [warmPct, setWarmPct] = useLocal('warmupPct', WARMUP_DEFAULT_PCT);
+  const [intro, setIntro] = useLocal('intro.enabled', true);
   const [msg, setMsg] = useState('');
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const file = useRef<HTMLInputElement>(null);
@@ -20,7 +21,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
 
   const backup = async () => {
     const text = await exportJSON();
-    const name = `workout-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const name = `myoforge-backup-${new Date().toISOString().slice(0, 10)}.json`;
     const f = new File([text], name, { type: 'application/json' });
     try {
       if (navigator.canShare?.({ files: [f] })) {
@@ -88,6 +89,19 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
             </div>
             <input type="range" min={0.5} max={0.8} step={0.05} value={warmPct} onChange={(e) => setWarmPct(Number(e.target.value))} aria-label="Warm-up percentage" />
             <small className="muted">One lighter set before your first working set, rounded to loadable plates. 60–80% is the evidence-backed range; one very light set did worst in testing.</small>
+          </section>
+
+          <section className="card">
+            <span className="label">Launch animation</span>
+            <div className="seg">
+              <button className={intro ? 'on' : ''} onClick={() => setIntro(true)}>
+                On
+              </button>
+              <button className={!intro ? 'on' : ''} onClick={() => setIntro(false)}>
+                Off
+              </button>
+            </div>
+            <small className="muted">The hammer-and-anvil intro when the app opens. Tap it to skip anytime.</small>
           </section>
 
           <section className="card">

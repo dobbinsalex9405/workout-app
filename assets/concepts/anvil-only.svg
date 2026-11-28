@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="46%" r="72%">
+      <stop offset="0" stop-color="#0f2350"/>
+      <stop offset="0.55" stop-color="#070d1e"/>
+      <stop offset="1" stop-color="#03050b"/>
+    </radialGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6f7ff"/>
+      <stop offset="0.35" stop-color="#4fd2ff"/>
+      <stop offset="1" stop-color="#2f6bff"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c4290"/>
+      <stop offset="0.5" stop-color="#0b1a3c"/>
+      <stop offset="1" stop-color="#060c1c"/>
+    </linearGradient>
+    <linearGradient id="fiber" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4fd2ff" stop-opacity="0"/>
+      <stop offset="0.25" stop-color="#4fd2ff" stop-opacity="0.85"/>
+      <stop offset="0.8" stop-color="#2f7bff" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#2f7bff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="hot" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.3" stop-color="#bfefff"/>
+      <stop offset="1" stop-color="#35c8ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="glowSm" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <!-- Anvil: horn on the left, the face rises into a flexed bicep peak, heel on the right. -->
+    <path id="anvil" d="
+      M 168 452
+      C 236 424 306 410 372 406
+      C 436 336 512 262 604 266
+      C 668 270 708 326 732 392
+      L 860 392
+      L 860 476
+      C 790 478 712 486 668 512
+      C 640 548 636 590 662 622
+      L 770 652
+      L 770 722
+      L 290 722
+      L 290 652
+      L 398 622
+      C 424 590 420 548 392 512
+      C 330 480 252 470 168 452 Z"/>
+    <clipPath id="clip"><use href="#anvil"/></clipPath>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <g transform="translate(512 518) scale(1.12) translate(-515 -432)">
+  <!-- floor glow under the anvil -->
+  <ellipse cx="530" cy="738" rx="330" ry="34" fill="#2f7bff" opacity="0.35" filter="url(#glow)"/>
+
+  <!-- outer neon halo -->
+  <use href="#anvil" fill="none" stroke="#2f8bff" stroke-width="34" opacity="0.55" filter="url(#glow)"/>
+
+  <!-- body -->
+  <use href="#anvil" fill="url(#body)"/>
+
+  <!-- muscle fibers: spindle bundle converging at both tendon ends -->
+  <g clip-path="url(#clip)" fill="none" stroke="url(#fiber)" stroke-linecap="round">
+    <path d="M 392 424 C 452 336 540 286 602 292 C 660 298 694 346 716 404" stroke-width="9"/>
+    <path d="M 394 436 C 462 362 548 318 602 322 C 652 326 686 364 712 410" stroke-width="8" opacity="0.85"/>
+    <path d="M 396 446 C 472 388 552 350 600 352 C 644 356 678 384 708 414" stroke-width="7" opacity="0.7"/>
+    <path d="M 398 456 C 482 414 556 384 598 384 C 636 386 670 402 704 418" stroke-width="6" opacity="0.55"/>
+    <path d="M 400 464 C 490 440 560 418 596 416 C 630 416 664 422 700 422" stroke-width="5" opacity="0.4"/>
+    <!-- tendon running into the heel -->
+    <path d="M 712 416 L 840 422" stroke-width="5" opacity="0.35"/>
+  </g>
+
+  <!-- crisp neon edge -->
+  <use href="#anvil" fill="none" stroke="url(#edge)" stroke-width="14" stroke-linejoin="round"/>
+  <!-- specular highlight along the peak -->
+  <path d="M 400 394 C 448 326 520 278 596 280" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.75" filter="url(#glowSm)"/>
+  <path d="M 400 394 C 448 326 520 278 596 280" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- strike point + sparks flying off the peak -->
+  <circle cx="606" cy="268" r="46" fill="url(#hot)" opacity="0.9"/>
+  <g stroke-linecap="round" fill="none">
+    <path d="M 640 244 L 712 178" stroke="#bfefff" stroke-width="7"/>
+    <path d="M 652 266 L 752 230" stroke="#4fd2ff" stroke-width="6"/>
+    <path d="M 618 228 L 650 148" stroke="#e6f7ff" stroke-width="5"/>
+    <path d="M 666 284 L 728 280" stroke="#35c8ff" stroke-width="4" opacity="0.8"/>
+    <path d="M 586 232 L 572 176" stroke="#4fd2ff" stroke-width="4" opacity="0.7"/>
+  </g>
+  <g fill="#bfefff">
+    <circle cx="744" cy="160" r="7"/>
+    <circle cx="784" cy="214" r="5"/>
+    <circle cx="676" cy="122" r="5"/>
+    <circle cx="762" cy="272" r="4" opacity="0.8"/>
+    <circle cx="560" cy="150" r="4" opacity="0.7"/>
+  </g>
+  </g>
+</svg>

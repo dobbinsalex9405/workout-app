@@ -1,6 +1,6 @@
 {
-  "name": "Workout App",
-  "short_name": "Workout",
+  "name": "MyoForge",
+  "short_name": "MyoForge",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#030509",

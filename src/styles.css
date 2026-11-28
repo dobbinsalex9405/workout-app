@@ -506,3 +506,15 @@ button.card:active { transform: scale(0.985); border-color: var(--line2); }
 
 /* Feedback */
 .feedback-text { resize: vertical; min-height: 110px; line-height: 1.45; }
+
+/* Launch animation */
+.launch-intro {
+  position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center;
+  background: radial-gradient(120% 80% at 50% 42%, #0f2350 0%, #070d1e 55%, #03050b 100%);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.launch-stage { display: flex; flex-direction: column; align-items: center; gap: 10px; will-change: transform; }
+.launch-art { width: min(78vw, 420px); height: auto; overflow: visible; }
+.launch-word { font-size: clamp(34px, 10vw, 48px); letter-spacing: 0.02em; color: var(--ice); text-shadow: 0 0 18px rgba(53, 200, 255, 0.55); will-change: transform, opacity; }
+.launch-word .myo { font-weight: 300; }
+.launch-word .forge { font-weight: 800; background: linear-gradient(90deg, #e6f7ff, #4fd2ff 45%, #2f7bff); -webkit-background-clip: text; background-clip: text; color: transparent; }

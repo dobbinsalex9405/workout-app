@@ -1,6 +1,6 @@
 {
   "appId": "com.workoutapp.app",
-  "appName": "Workout App",
+  "appName": "MyoForge",
   "webDir": "dist",
   "backgroundColor": "#030509",
   "ios": { "contentInset": "never" },

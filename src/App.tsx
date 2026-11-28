@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocal } from './store';
 import { WorkoutScreen, autoEndStaleWorkout } from './screens/Workout';
 import { PlansScreen } from './screens/Plans';
@@ -11,6 +11,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Icon, type IconName } from './components/Icon';
 import { checkForUpdate } from './update';
 import { flushFeedback } from './feedback';
+import { LaunchIntro } from './components/LaunchIntro';
 
 const TABS: { id: string; label: string; icon: IconName }[] = [
   { id: 'workout', label: 'Workout', icon: 'workout' },
@@ -24,6 +25,13 @@ export default function App() {
   const [tab, setTab] = useLocal<string>('ui.tab', 'workout');
   const [settings, setSettings] = useLocal('ui.settings', false);
   const main = useRef<HTMLElement>(null);
+  // Launch animation: once per app start (not when switching back to the app), unless turned off.
+  const [introOn] = useLocal('intro.enabled', true);
+  const [intro, setIntro] = useState(() => (introOn && !sessionStorage.getItem('intro.shown')) || location.search.includes('introAt='));
+  const endIntro = useCallback(() => {
+    sessionStorage.setItem('intro.shown', '1');
+    setIntro(false);
+  }, []);
   const idx = Math.max(0, TABS.findIndex((t) => t.id === tab));
 
   // Restore scroll position per tab (survives reloads), and remember it as you scroll.
@@ -121,6 +129,7 @@ export default function App() {
       </nav>
       {settings && <SettingsScreen onClose={() => setSettings(false)} />}
       <PRFlash />
+      {intro && <LaunchIntro onDone={endIntro} />}
     </div>
   );
 }

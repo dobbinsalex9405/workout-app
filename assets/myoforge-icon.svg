@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="46%" r="72%">
+      <stop offset="0" stop-color="#0f2350"/>
+      <stop offset="0.55" stop-color="#070d1e"/>
+      <stop offset="1" stop-color="#03050b"/>
+    </radialGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6f7ff"/>
+      <stop offset="0.35" stop-color="#4fd2ff"/>
+      <stop offset="1" stop-color="#2f6bff"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c4290"/>
+      <stop offset="0.5" stop-color="#0b1a3c"/>
+      <stop offset="1" stop-color="#060c1c"/>
+    </linearGradient>
+    <radialGradient id="hot" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.3" stop-color="#bfefff"/>
+      <stop offset="1" stop-color="#35c8ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" filterUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <!-- Dumbbell hammer, drawn upright: strike face at 0,0, head runs up, handle runs right. -->
+    <g id="hammer">
+      <rect x="0" y="-117" width="200" height="24" rx="12"/>
+      <rect x="136" y="-122" width="72" height="34" rx="15"/>
+      <rect x="-10" y="-150" width="20" height="90" rx="5"/>
+      <rect x="-22" y="-62" width="44" height="14" rx="5"/>
+      <rect x="-22" y="-162" width="44" height="14" rx="5"/>
+      <rect x="-46" y="-50" width="92" height="24" rx="7"/>
+      <rect x="-46" y="-184" width="92" height="24" rx="7"/>
+      <rect x="-62" y="-27" width="124" height="27" rx="8"/>
+      <rect x="-62" y="-211" width="124" height="27" rx="8"/>
+    </g>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <g transform="translate(64 52)">
+  <!-- impact burst off the strike face (lower left) -->
+  <circle cx="300" cy="640" r="120" fill="url(#hot)" opacity="0.55"/>
+  <g stroke-linecap="round" fill="none">
+    <path d="M 262 626 L 178 600" stroke="#e6f7ff" stroke-width="12"/>
+    <path d="M 276 676 L 210 742" stroke="#4fd2ff" stroke-width="10"/>
+    <path d="M 312 700 L 300 800" stroke="#bfefff" stroke-width="9"/>
+    <path d="M 252 652 L 160 680" stroke="#35c8ff" stroke-width="7" opacity="0.8"/>
+  </g>
+  <g fill="#bfefff">
+    <circle cx="150" cy="580" r="11"/>
+    <circle cx="186" cy="772" r="9"/>
+    <circle cx="292" cy="834" r="8"/>
+    <circle cx="132" cy="696" r="7" opacity="0.8"/>
+  </g>
+
+  <!-- glow, blurred in unrotated space so it has no hard edges -->
+  <g filter="url(#glow)" opacity="0.6"><g transform="translate(520 470) rotate(45) scale(2.25) translate(-73 105)"><use href="#hammer" fill="none" stroke="#2f8bff" stroke-width="12"/></g></g>
+  <!-- the hammer, swinging down-left -->
+  <g transform="translate(520 470) rotate(45) scale(2.25) translate(-73 105)">
+    <use href="#hammer" fill="url(#body)"/>
+    <use href="#hammer" fill="none" stroke="url(#edge)" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M -52 -19 L 52 -19" stroke="#e6f7ff" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>
+    <path d="M -52 -203 L 52 -203" stroke="#e6f7ff" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+    <g stroke="#4fd2ff" stroke-width="2" opacity="0.6">
+      <path d="M 154 -117 L 154 -93"/><path d="M 172 -117 L 172 -93"/><path d="M 190 -117 L 190 -93"/>
+    </g>
+  </g>
+  </g>
+</svg>

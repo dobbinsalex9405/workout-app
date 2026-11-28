@@ -1,4 +1,4 @@
-# Workout App
+# MyoForge
 
 On-device workout tracker for two people (iPhone + Android). React + TypeScript + Vite, data in IndexedDB via Dexie. No server, no accounts. Black/blue theme.
 
