@@ -1,128 +1,110 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * Launch animation: a plain anvil draws in, the dumbbell hammer swings down and strikes,
- * and the anvil's top flexes up into an arm, then "MyoForge" lights up and it all fades
- * into the app. ~2.4s, tap to skip, a short fade only with Reduce Motion.
+ * Launch animation: a clean, flat anvil fades in, a dumbbell drops onto it from above,
+ * bounces twice (each lower than the last), and settles. A light streak runs across the
+ * anvil face on impact, then "MyoForge" lights up and it fades into the app.
+ * ~2.3s, tap to skip, a short fade only with Reduce Motion.
  *
  * Everything is driven from one requestAnimationFrame loop that writes SVG attributes
  * directly (no React re-renders), so it stays smooth on older phones.
  */
 
-type Seg = [number, number, number, number, number, number]; // c1x c1y c2x c2y x y
-type Shape = { start: [number, number]; top: Seg[] };
-
-/** The waist and base never change; only the top (5 segments) morphs. */
-const BASE: Seg[] = [
-  [640, 548, 636, 590, 662, 622],
-  [662, 622, 770, 652, 770, 652],
-  [770, 652, 770, 722, 770, 722],
-  [770, 722, 290, 722, 290, 722],
-  [290, 722, 290, 652, 290, 652],
-  [290, 652, 398, 622, 398, 622],
-  [424, 590, 420, 548, 392, 512],
-];
-
-const ANVIL: Shape = {
-  start: [168, 452],
-  top: [
-    [212, 436, 256, 422, 300, 414], // horn
-    [325, 410, 350, 407, 372, 406],
-    [400, 405, 430, 403, 460, 402], // face
-    [490, 401, 520, 400, 550, 399],
-    [570, 399, 590, 398, 610, 398],
-    [630, 397, 650, 397, 670, 396],
-    [690, 396, 710, 395, 730, 395],
-    [760, 394, 790, 393, 820, 393],
-    [833, 392, 846, 392, 860, 392],
-    [860, 420, 860, 450, 860, 476], // heel front
-    [790, 478, 712, 486, 668, 512], // heel underside
-  ],
-};
-
-/** Same segment count, so every point has a partner to travel to. */
-const ARM: Shape = {
-  start: [200, 500],
-  top: [
-    [176, 466, 184, 410, 240, 392], // deltoid
-    [290, 330, 360, 262, 450, 262], // bicep rising to the peak
-    [540, 262, 584, 290, 590, 336], // peak into the elbow crease
-    [598, 300, 610, 250, 619, 214], // inner forearm, longer, up to the wrist
-    [626, 209, 634, 203, 643, 199], // wrist, angled back toward the shoulder (fist sits here)
-    [656, 193, 669, 188, 682, 183],
-    [695, 177, 706, 174, 718, 170],
-    [722, 170, 727, 170, 732, 172],
-    [744, 210, 754, 250, 760, 290], // outer forearm
-    [766, 330, 782, 366, 784, 402],
-    [788, 470, 742, 506, 668, 512], // elbow
-  ],
-};
-const CLOSE_ANVIL: Seg = [330, 480, 252, 470, 168, 452];
-const CLOSE_ARM: Seg = [330, 520, 250, 520, 200, 500];
-
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const lerpSeg = (a: Seg, b: Seg, t: number) => a.map((v, i) => lerp(v, b[i], t)) as Seg;
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const easeIn = (t: number) => t * t * t;
 const easeOut = (t: number) => 1 - (1 - t) ** 3;
-/** Overshoots a little, then settles: the "flex". */
-const easeOutBack = (t: number) => {
-  const c = 1.6;
-  return 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2;
-};
 /** Progress of `now` through the window [from, to], 0..1. */
 const span = (now: number, from: number, to: number) => clamp01((now - from) / (to - from));
 
-const FLEX = 1;
+/** The anvil's striking face (top) is at y = FACE; the dumbbell rests on it at x = REST_X. */
+const FACE = 196;
+const REST_X = 214;
 
-function pathAt(p: number) {
-  const t = p * FLEX;
-  const sx = lerp(ANVIL.start[0], ARM.start[0], t);
-  const sy = lerp(ANVIL.start[1], ARM.start[1], t);
-  const segs = [...ANVIL.top.map((s, i) => lerpSeg(s, ARM.top[i], t)), ...BASE, lerpSeg(CLOSE_ANVIL, CLOSE_ARM, t)];
-  return `M${sx.toFixed(1)},${sy.toFixed(1)} ` + segs.map((s) => 'C' + s.map((v) => v.toFixed(1)).join(',')).join(' ') + ' Z';
+/**
+ * Drop physics, in SVG units and ms. Falls DROP units, then each bounce keeps E of the
+ * speed (so E² of the height). Gravity is picked so the fall takes FALL ms.
+ */
+const DROP = 430;
+const FALL = 400;
+const E = 0.42;
+const G = (2 * DROP) / (FALL * FALL);
+const V0 = G * FALL; // speed at the first impact
+const B1 = (2 * V0 * E) / G; // duration of the first bounce
+const B2 = (2 * V0 * E * E) / G; // and the second
+const T = {
+  anvil: [0, 420],
+  drop: 200, // dumbbell starts falling
+  word: [1300, 1650],
+  out: [1950, 2280],
+};
+/** Landings: left end first, then the right end, then the left again, then it rocks flat. */
+const HITS = [T.drop + FALL, T.drop + FALL + B1, T.drop + FALL + B1 + B2];
+const TILT = [-17, -13, 8, -3.5]; // degrees: as it starts falling, and at each landing
+const ROCK = 440; // ms of rocking on the face before it sits still
+const TOTAL = T.out[1];
+/** Half the span of the big plates' feet: a tilted dumbbell rests on this corner. */
+const FOOT = 68;
+
+/** Height of the lowest point above the face (>= 0) and the tilt, at time t. */
+function dropAt(t: number): { h: number; tilt: number } {
+  const u = t - T.drop;
+  if (u < 0) return { h: DROP, tilt: TILT[0] };
+  // In the air it spins at a steady rate from one landing angle to the next.
+  if (u < FALL) return { h: DROP - 0.5 * G * u * u, tilt: TILT[0] + (TILT[1] - TILT[0]) * (u / FALL) };
+  const up = (v: number, s: number) => Math.max(0, v * s - 0.5 * G * s * s);
+  if (t < HITS[1]) return { h: up(V0 * E, t - HITS[0]), tilt: TILT[1] + (TILT[2] - TILT[1]) * ((t - HITS[0]) / B1) };
+  if (t < HITS[2]) return { h: up(V0 * E * E, t - HITS[1]), tilt: TILT[2] + (TILT[3] - TILT[2]) * ((t - HITS[1]) / B2) };
+  // On the face: rocks from end to end, smaller each time, then sits flat.
+  const k = (t - HITS[2]) / ROCK;
+  if (k >= 1) return { h: 0, tilt: 0 };
+  return { h: 0, tilt: TILT[3] * (1 - k) ** 2 * Math.cos(k * Math.PI * 2.5) };
 }
 
-const HIT: [number, number] = [520, 400];
-/** Hammer pose: translate, rotate, scale, then swing about the grip. */
-type Pose = { x: number; y: number; r: number; k: number; a: number };
-const STRIKE: Pose = { x: HIT[0], y: HIT[1], r: -24, k: 1.15, a: 0 };
-/** Held upright in the fist: handle straight down, dumbbell head on top. */
-const HELD: Pose = { x: 563, y: 0, r: 90, k: 1, a: 0 };
-const poseStr = (p: Pose) => `translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) rotate(${p.r.toFixed(2)}) scale(${p.k.toFixed(3)}) rotate(${p.a.toFixed(2)} 208 -105)`;
-/** The fist: palm, four fingers wrapped around the handle, thumb over the top. */
-const FIST: { x: number; y: number; w: number; h: number; r: number }[] = [
-  { x: 640, y: 106, w: 116, h: 150, r: 30 }, // back of the hand
-  { x: 578, y: 110, w: 120, h: 36, r: 18 },
-  { x: 574, y: 145, w: 122, h: 36, r: 18 },
-  { x: 576, y: 180, w: 118, h: 36, r: 18 },
-  { x: 584, y: 215, w: 108, h: 36, r: 18 },
-];
-/** The fist sits on the raised wrist, tilted back toward the shoulder like the top of a curl. */
-const GRIP = { angle: -22, cx: 672, cy: 190, lift: -60 };
-const gripStr = (e: number) => `rotate(${(GRIP.angle * e).toFixed(2)} ${GRIP.cx} ${GRIP.cy}) translate(0 ${(GRIP.lift * e).toFixed(1)})`;
-const THUMB = 'M 608 112 C 624 90 670 86 716 98 L 716 124 C 678 116 640 118 608 130 Z';
-const SPARKS = Array.from({ length: 9 }, (_, i) => {
-  const a = (-170 + i * (160 / 8)) * (Math.PI / 180); // fan above the strike
-  return { dx: Math.cos(a), dy: Math.sin(a), dist: 190 + (i % 3) * 70, len: 44 + (i % 2) * 26 };
-});
+/** Squash and stretch: a quick squash on each landing, scaled by how hard it hit. */
+function squashAt(t: number) {
+  let s = 0;
+  HITS.forEach((h, i) => {
+    const k = (t - h) / 150;
+    if (k >= 0 && k < 1) s += [0.16, 0.07, 0.025][i] * Math.sin(Math.PI * k) * (1 - k);
+  });
+  return s;
+}
 
-// Timeline (ms)
-const T = { draw: [0, 520], hammerIn: [260, 500], swing: [520, 700], hit: 700, fly: [820, 1260], morph: [780, 1300], grip: [1180, 1400], fibers: [1250, 1550], word: [1300, 1650], out: [2150, 2480] };
-const TOTAL = T.out[1];
+/** A soft pulse after each landing (light streak, glow, anvil dip), 0..1. */
+function impactAt(t: number, len = 520) {
+  let v = 0;
+  HITS.forEach((h, i) => {
+    const k = (t - h) / len;
+    if (k >= 0 && k < 1) v = Math.max(v, [1, 0.45, 0.18][i] * (1 - k) ** 2);
+  });
+  return v;
+}
+
+const ANVIL =
+  'M 52 205 C 72 199 92 196 120 196 L 332 196 Q 340 196 340 204 L 340 224 Q 340 232 332 232 ' +
+  'L 292 232 C 270 233 262 242 260 256 L 258 272 Q 257 279 266 281 L 296 287 Q 306 289 306 298 ' +
+  'L 306 304 Q 306 311 299 311 L 103 311 Q 96 311 96 304 L 96 298 Q 96 289 106 287 L 136 281 ' +
+  'Q 145 279 144 272 L 142 256 C 140 240 128 233 112 231 C 88 227 68 218 52 205 Z';
+
+/** The dumbbell, drawn with its plates resting on y = 0 and centred on x = 0. */
+const PLATES: { x: number; w: number; h: number }[] = [
+  { x: -78, w: 10, h: 26 }, // end cap
+  { x: -68, w: 20, h: 66 }, // big plate
+  { x: -48, w: 12, h: 48 }, // small plate
+  { x: 36, w: 12, h: 48 },
+  { x: 48, w: 20, h: 66 },
+  { x: 68, w: 10, h: 26 },
+];
+const PLATE_Y = -33; // the plates' centre line
+const SPARKS = [-1, 1].flatMap((dir) => [0, 1, 2].map((i) => ({ dir, y: -4 - i * 7, len: 26 - i * 6, dist: 74 + i * 12 })));
 
 export function LaunchIntro({ onDone }: { onDone: () => void }) {
   const root = useRef<HTMLDivElement>(null);
-  const stage = useRef<HTMLDivElement>(null);
-  const shape = useRef<SVGPathElement>(null);
-  const fill = useRef<SVGPathElement>(null);
-  const halo = useRef<SVGPathElement>(null);
-  const hammer = useRef<SVGGElement>(null);
-  const flash = useRef<SVGCircleElement>(null);
+  const anvil = useRef<SVGGElement>(null);
+  const bell = useRef<SVGGElement>(null);
+  const shadow = useRef<SVGEllipseElement>(null);
+  const streak = useRef<SVGRectElement>(null);
+  const glow = useRef<SVGEllipseElement>(null);
   const sparks = useRef<SVGGElement>(null);
-  const fibers = useRef<SVGGElement>(null);
-  const fist = useRef<SVGGElement>(null);
-  const grip = useRef<SVGGElement>(null);
   const word = useRef<HTMLDivElement>(null);
   const done = useRef(false);
 
@@ -137,23 +119,17 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
     };
     let raf = 0;
     const t0 = performance.now();
+    const s = (el: Element | null, k: string, v: string | number) => el?.setAttribute(k, String(v));
 
     const frame = (now: number) => {
       const t = Number.isNaN(frozen) ? now - t0 : frozen;
-      const s = (el: Element | null, k: string, v: string | number) => el?.setAttribute(k, String(v));
 
       if (reduce) {
         // Final pose only: fade in, hold, fade out.
-        s(shape.current, 'd', pathAt(1));
-        s(fill.current, 'd', pathAt(1));
-        s(halo.current, 'd', pathAt(1));
-        s(shape.current, 'stroke-dashoffset', 0);
-        s(fill.current, 'opacity', 1);
-        s(fibers.current, 'opacity', 1);
-        s(hammer.current, 'opacity', 1);
-        s(hammer.current, 'transform', poseStr(HELD));
-        s(grip.current, 'transform', gripStr(1));
-        fist.current?.querySelectorAll('g').forEach((g) => s(g, 'opacity', 1));
+        s(anvil.current, 'opacity', 1);
+        s(bell.current, 'transform', `translate(${REST_X} ${FACE})`);
+        s(bell.current, 'opacity', 1);
+        s(shadow.current, 'opacity', 0.6);
         if (word.current) word.current.style.opacity = '1';
         const o = t < 300 ? t / 300 : t > 1000 ? 1 - (t - 1000) / 300 : 1;
         if (root.current) root.current.style.opacity = String(clamp01(o));
@@ -162,73 +138,46 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
         return;
       }
 
-      // 1. anvil draws itself in, then fills
-      s(shape.current, 'stroke-dashoffset', 1 - easeOut(span(t, T.draw[0], T.draw[1])));
-      s(fill.current, 'opacity', span(t, 300, 620));
-      s(halo.current, 'opacity', 0.55 * span(t, 300, 620));
+      // 1. the anvil rises in
+      const a = easeOut(span(t, T.anvil[0], T.anvil[1]));
+      const dip = 4 * impactAt(t, 220);
+      s(anvil.current, 'opacity', a);
+      s(anvil.current, 'transform', `translate(0 ${((1 - a) * 14 + dip).toFixed(2)})`);
 
-      // 2. hammer appears raised, swings down, bounces off, and flies up into the new hand
-      const swing = easeIn(span(t, T.swing[0], T.swing[1]));
-      const recoil = easeOut(span(t, T.hit, T.fly[0]));
-      const angle = t < T.hit ? lerp(62, 0, swing) : lerp(0, 18, recoil);
-      let pose: Pose = { ...STRIKE, a: angle };
-      let e = 0;
-      if (t >= T.fly[0]) {
-        const f = span(t, T.fly[0], T.fly[1]);
-        e = f < 0.5 ? 4 * f * f * f : 1 - (-2 * f + 2) ** 3 / 2; // ease in-out
-        pose = {
-          x: lerp(STRIKE.x, HELD.x, e),
-          y: lerp(STRIKE.y, HELD.y, e) - 90 * Math.sin(Math.PI * e), // a little lob
-          r: lerp(STRIKE.r, HELD.r, e),
-          k: lerp(STRIKE.k, HELD.k, e),
-          a: lerp(18, 0, e),
-        };
-      }
-      s(hammer.current, 'transform', poseStr(pose));
-      s(grip.current, 'transform', gripStr(e)); // tilt blends in as it flies to the hand
-      s(hammer.current, 'opacity', span(t, T.hammerIn[0], T.hammerIn[1]));
+      // 2. the dumbbell falls, bounces twice and settles
+      const { h, tilt } = dropAt(t);
+      const q = squashAt(t);
+      s(
+        bell.current,
+        'transform',
+        `translate(${REST_X} ${(FACE - h - FOOT * Math.abs(Math.sin((tilt * Math.PI) / 180)) + dip).toFixed(2)}) rotate(${tilt.toFixed(2)}) scale(${(1 + q * 0.6).toFixed(3)} ${(1 - q).toFixed(3)})`,
+      );
+      s(bell.current, 'opacity', t < T.drop ? 0 : 1);
+      // its shadow on the anvil face tightens as it comes down
+      const near = clamp01(1 - h / DROP);
+      s(shadow.current, 'opacity', t < T.drop ? 0 : (0.15 + 0.55 * near * near).toFixed(3));
+      s(shadow.current, 'rx', (40 + 46 * near).toFixed(1));
 
-      // the fingers close around the handle one after another
-      fist.current?.querySelectorAll('g').forEach((g, i) => {
-        const g0 = T.grip[0] + i * 40;
-        const v = easeOut(span(t, g0, g0 + 140));
-        s(g, 'opacity', v);
-        s(g, 'transform', `translate(${((1 - v) * 26).toFixed(1)} 0)`);
-      });
-
-      // 3. impact: flash, sparks, shake
-      const h = span(t, T.hit, T.hit + 420);
-      s(flash.current, 'r', t >= T.hit ? 40 + 210 * easeOut(h) : 0);
-      s(flash.current, 'opacity', t >= T.hit ? 1 - h : 0);
-      const sp = span(t, T.hit, T.hit + 520);
+      // 3. impact: light streak across the face, glow under the anvil, little sparks
+      const imp = impactAt(t);
+      s(streak.current, 'opacity', imp.toFixed(3));
+      s(streak.current, 'transform', `translate(${REST_X} 0) scale(${(0.3 + 0.7 * easeOut(1 - imp)).toFixed(3)} 1) translate(${-REST_X} 0)`);
+      s(glow.current, 'opacity', (0.35 + 0.65 * imp).toFixed(3));
+      const sp = t >= HITS[0] ? span(t, HITS[0], HITS[0] + 380) : 0;
       sparks.current?.querySelectorAll('line').forEach((ln, i) => {
         const k = SPARKS[i];
-        const d = easeOut(sp) * k.dist;
-        s(ln, 'x1', HIT[0] + k.dx * d);
-        s(ln, 'y1', HIT[1] + k.dy * d);
-        s(ln, 'x2', HIT[0] + k.dx * (d + k.len * (1 - sp)));
-        s(ln, 'y2', HIT[1] + k.dy * (d + k.len * (1 - sp)));
-        s(ln, 'opacity', t >= T.hit ? 1 - sp : 0);
+        const d = 8 + easeOut(sp) * k.dist * 0.8;
+        const x1 = REST_X - FOOT + 10 + k.dir * d; // from where the left end lands
+        s(ln, 'x1', x1);
+        s(ln, 'x2', x1 + k.dir * k.len * (1 - sp));
+        s(ln, 'opacity', sp > 0 && sp < 1 ? 1 - sp : 0);
       });
-      if (stage.current) {
-        const sh = span(t, T.hit, T.hit + 220);
-        const amp = t >= T.hit && sh < 1 ? 9 * (1 - sh) : 0;
-        stage.current.style.transform = `translate(${(Math.sin(t * 0.09) * amp).toFixed(1)}px, ${(Math.cos(t * 0.11) * amp).toFixed(1)}px)`;
-      }
 
-      // 4. the anvil flexes up into an arm
-      const m = easeOutBack(span(t, T.morph[0], T.morph[1]));
-      const d = pathAt(m);
-      s(shape.current, 'd', d);
-      s(fill.current, 'd', d);
-      s(halo.current, 'd', d);
-      s(fibers.current, 'opacity', span(t, T.fibers[0], T.fibers[1]));
-
-      // 5. name, hold, fade into the app
+      // 4. name, hold, fade into the app
       if (word.current) {
         const w = easeOut(span(t, T.word[0], T.word[1]));
         word.current.style.opacity = String(w);
-        word.current.style.transform = `translateY(${(1 - w) * 14}px)`;
+        word.current.style.transform = `translateY(${(1 - w) * 12}px)`;
       }
       if (root.current) root.current.style.opacity = String(1 - span(t, T.out[0], T.out[1]));
 
@@ -256,73 +205,59 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
 
   return (
     <div ref={root} className="launch-intro" onClick={skip} role="presentation" aria-hidden="true">
-      <div ref={stage} className="launch-stage">
-        <svg viewBox="80 -70 860 850" className="launch-art">
+      <div className="launch-stage">
+        <svg viewBox="30 20 340 310" className="launch-art">
           <defs>
+            <linearGradient id="li-anvil" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#1a2740" />
+              <stop offset="0.45" stopColor="#0f1622" />
+              <stop offset="1" stopColor="#0a0f18" />
+            </linearGradient>
             <linearGradient id="li-edge" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#e6f7ff" />
-              <stop offset="0.35" stopColor="#4fd2ff" />
-              <stop offset="1" stopColor="#2f6bff" />
+              <stop offset="0" stopColor="#8fd8ff" stopOpacity="0.9" />
+              <stop offset="0.5" stopColor="#2f7bff" stopOpacity="0.75" />
+              <stop offset="1" stopColor="#2f7bff" stopOpacity="0.35" />
             </linearGradient>
-            <linearGradient id="li-body" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#1c4290" />
-              <stop offset="0.5" stopColor="#0b1a3c" />
-              <stop offset="1" stopColor="#060c1c" />
+            <linearGradient id="li-bell" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#5aa2ff" />
+              <stop offset="0.5" stopColor="#2f7bff" />
+              <stop offset="1" stopColor="#1d5be0" />
             </linearGradient>
-            <radialGradient id="li-hot" cx="50%" cy="50%" r="50%">
-              <stop offset="0" stopColor="#ffffff" />
-              <stop offset="0.35" stopColor="#bfefff" />
+            <linearGradient id="li-streak" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#35c8ff" stopOpacity="0" />
+              <stop offset="0.5" stopColor="#e6f7ff" />
               <stop offset="1" stopColor="#35c8ff" stopOpacity="0" />
+            </linearGradient>
+            <radialGradient id="li-pool" cx="50%" cy="50%" r="50%">
+              <stop offset="0" stopColor="#2f7bff" stopOpacity="0.55" />
+              <stop offset="1" stopColor="#2f7bff" stopOpacity="0" />
             </radialGradient>
-            <filter id="li-glow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="16" />
+            <filter id="li-soft" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="6" />
             </filter>
-            <g id="li-hammer">
-              <rect x="0" y="-117" width="200" height="24" rx="12" />
-              <rect x="136" y="-122" width="72" height="34" rx="15" />
-              <rect x="-10" y="-150" width="20" height="90" rx="5" />
-              <rect x="-22" y="-62" width="44" height="14" rx="5" />
-              <rect x="-22" y="-162" width="44" height="14" rx="5" />
-              <rect x="-46" y="-50" width="92" height="24" rx="7" />
-              <rect x="-46" y="-184" width="92" height="24" rx="7" />
-              <rect x="-62" y="-27" width="124" height="27" rx="8" />
-              <rect x="-62" y="-211" width="124" height="27" rx="8" />
-            </g>
           </defs>
 
-          <ellipse cx="530" cy="736" rx="320" ry="30" fill="#2f7bff" opacity="0.3" filter="url(#li-glow)" />
-          <path ref={halo} d={pathAt(0)} fill="none" stroke="#2f8bff" strokeWidth="30" opacity="0" filter="url(#li-glow)" />
-          <path ref={fill} d={pathAt(0)} fill="url(#li-body)" opacity="0" />
-          <g ref={fibers} opacity="0" fill="none" stroke="#4fd2ff" strokeLinecap="round">
-            <path d="M 262 424 C 330 306 460 252 580 352" strokeWidth="9" opacity="0.85" />
-            <path d="M 274 448 C 350 344 460 304 576 370" strokeWidth="7" opacity="0.6" />
-            <path d="M 290 470 C 370 386 460 354 570 388" strokeWidth="6" opacity="0.4" />
-          </g>
-          <path ref={shape} d={pathAt(0)} fill="none" stroke="url(#li-edge)" strokeWidth="14" strokeLinejoin="round" pathLength={1} strokeDasharray="1" strokeDashoffset="1" />
+          <ellipse ref={glow} cx="200" cy="314" rx="150" ry="22" fill="url(#li-pool)" opacity="0.35" />
 
-          <circle ref={flash} cx={HIT[0]} cy={HIT[1]} r="0" fill="url(#li-hot)" opacity="0" />
-          <g ref={sparks} stroke="#bfefff" strokeWidth="10" strokeLinecap="round">
-            {SPARKS.map((_, i) => (
-              <line key={i} x1={HIT[0]} y1={HIT[1]} x2={HIT[0]} y2={HIT[1]} opacity="0" stroke={i % 3 === 0 ? '#e6f7ff' : i % 3 === 1 ? '#4fd2ff' : '#bfefff'} />
+          <g ref={anvil} opacity="0">
+            <path d={ANVIL} fill="url(#li-anvil)" stroke="url(#li-edge)" strokeWidth="2.5" strokeLinejoin="round" />
+            {/* the polished striking face */}
+            <path d="M 122 199.5 L 330 199.5" stroke="#d9f2ff" strokeOpacity="0.35" strokeWidth="1.5" strokeLinecap="round" />
+            <ellipse ref={shadow} cx={REST_X} cy={FACE + 2} rx="40" ry="5" fill="#000" opacity="0" filter="url(#li-soft)" />
+            <rect ref={streak} x="100" y={FACE - 2} width="250" height="4" rx="2" fill="url(#li-streak)" opacity="0" />
+          </g>
+
+          <g ref={sparks} stroke="#bfefff" strokeWidth="2.5" strokeLinecap="round">
+            {SPARKS.map((k, i) => (
+              <line key={i} x1={REST_X} y1={FACE + k.y} x2={REST_X} y2={FACE + k.y} opacity="0" />
             ))}
           </g>
 
-          <g ref={grip}>
-            <g ref={hammer} opacity="0">
-              <use href="#li-hammer" fill="url(#li-body)" />
-              <use href="#li-hammer" fill="none" stroke="url(#li-edge)" strokeWidth="9" strokeLinejoin="round" />
-            </g>
-          </g>
-
-          <g ref={fist} transform={gripStr(1)}>
-            {FIST.map((f, i) => (
-              <g key={i} opacity="0">
-                <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={f.r} fill="url(#li-body)" stroke="url(#li-edge)" strokeWidth="9" />
-              </g>
+          <g ref={bell} opacity="0">
+            <rect x="-48" y={PLATE_Y - 6} width="96" height="12" rx="6" fill="url(#li-bell)" />
+            {PLATES.map((p, i) => (
+              <rect key={i} x={p.x} y={PLATE_Y - p.h / 2} width={p.w} height={p.h} rx={Math.min(6, p.w / 2)} fill="url(#li-bell)" stroke="#9fd8ff" strokeOpacity="0.55" strokeWidth="1.5" />
             ))}
-            <g opacity="0">
-              <path d={THUMB} fill="url(#li-body)" stroke="url(#li-edge)" strokeWidth="9" strokeLinejoin="round" />
-            </g>
           </g>
         </svg>
         <div ref={word} className="launch-word" style={{ opacity: 0 }}>

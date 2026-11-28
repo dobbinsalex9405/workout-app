@@ -510,7 +510,7 @@ button.card:active { transform: scale(0.985); border-color: var(--line2); }
 /* Launch animation */
 .launch-intro {
   position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center;
-  background: radial-gradient(120% 80% at 50% 42%, #0f2350 0%, #070d1e 55%, #03050b 100%);
+  background: radial-gradient(90% 55% at 50% 44%, #0c1a38 0%, #060b16 55%, var(--bg) 100%);
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .launch-stage { display: flex; flex-direction: column; align-items: center; gap: 10px; will-change: transform; }
