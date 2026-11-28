@@ -46,6 +46,19 @@ export const RECOVERY_HOURS: Record<SizeClass, number> = { small: 48, medium: 60
 /** Sets to failure delay recovery by roughly a day (Morán-Navarro 2017). */
 export const FAILURE_EXTRA_HOURS = 24;
 
+/**
+ * Each drop in a drop set, and each myo-rep mini-set, counts as half a hard set. Short and
+ * pre-fatigued, but taken close to failure. With 4 mini-sets a myo-rep set ≈ 3 sets, the usual
+ * equivalence. Heuristic: studies show similar growth to traditional sets, not an exact ratio.
+ */
+export const FOLLOWUP_SET = 0.5;
+
+/** Set types that are taken to (or very near) failure, so they get the longer recovery. */
+export const NEAR_FAILURE_TYPES = ['failure', 'drop', 'myo'] as const;
+
+/** Suggested weight for the next drop: cut ~20–25%. */
+export const DROP_FACTOR = 0.8;
+
 /** Fatigue saturates: this many fresh hard sets ≈ 63% fatigued, double ≈ 86%. (Display model, not a measured value.) */
 export const FATIGUE_SCALE_SETS = 4;
 
@@ -118,6 +131,20 @@ export interface Ref {
 }
 
 export const REFERENCES: Ref[] = [
+  {
+    topic: 'Drop sets',
+    claim: 'Drop sets build about as much muscle as traditional sets in less time. This app counts each drop as half a set.',
+    cite: 'Sødal et al. (2023). Sports Med Open 9:66.',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/?term=S%C3%B8dal+2023+drop+sets+hypertrophy+meta-analysis',
+    confidence: 'Moderate',
+  },
+  {
+    topic: 'Myo-reps / rest-pause',
+    claim: 'Rest-pause training gave similar or better growth than traditional sets in trained lifters. This app counts each mini-set as half a set (activation + 4 minis ≈ 3 sets).',
+    cite: 'Prestes et al. (2019). J Strength Cond Res 33(S1).',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/?term=Prestes+2019+rest-pause+traditional+multiple-sets+trained',
+    confidence: 'Low',
+  },
   {
     topic: 'Weekly volume',
     claim: 'More weekly sets per muscle → more growth, with ≥10 sets/week the best-supported range.',

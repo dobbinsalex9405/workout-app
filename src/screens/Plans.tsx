@@ -4,7 +4,7 @@ import { db } from '../db';
 import { useLocal } from '../store';
 import { GROUPS } from '../seed';
 import { MUSCLES } from '../science';
-import { fmtAgo, fmtW, isWorking } from '../calc';
+import { fmtAgo, fmtW, isStrengthSet } from '../calc';
 import type { Plan, SetEntry, Unit } from '../types';
 import { ExercisePicker } from '../components/ExercisePicker';
 import { ExerciseSheet } from '../components/ExerciseSheet';
@@ -57,7 +57,7 @@ function MyExercises() {
   // Most recent working session per exercise, for the "last" line.
   const last = useLiveQuery(
     async () => {
-      const sets = (await db.sets.where('exerciseId').anyOf(ids).toArray()).filter(isWorking);
+      const sets = (await db.sets.where('exerciseId').anyOf(ids).toArray()).filter(isStrengthSet);
       const out = new Map<number, { ts: number; top: SetEntry }>();
       for (const s of sets) {
         const cur = out.get(s.exerciseId);

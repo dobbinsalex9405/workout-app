@@ -1,4 +1,4 @@
-export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
+export type SetType = 'normal' | 'warmup' | 'drop' | 'myo' | 'failure';
 export type Unit = 'lb' | 'kg';
 
 export type Muscle =
@@ -69,6 +69,8 @@ export interface SetEntry {
   ts: number;
   /** ['Weight'] when this set was a new heaviest weight for the exercise. */
   prs?: string[];
+  /** A drop in a drop set, or a myo-rep mini-set: id of the cluster's first set. */
+  parent?: number;
 }
 
 export interface Session {

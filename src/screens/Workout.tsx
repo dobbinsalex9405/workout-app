@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, deleteWorkout } from '../db';
 import { setLocal, showPR, useLocal } from '../store';
-import { detectPRs, e1rm, fmtDateLong, fmtW, fromDisplay, isWorking, stallInfo, toSessions, warmupFor } from '../calc';
+import { detectPRs, e1rm, fmtDateLong, fmtW, fromDisplay, isFollowup, isStrengthSet, isWorking, roundLoad, stallInfo, toDisplay, toSessions, warmupFor } from '../calc';
+import { DROP_FACTOR } from '../science';
+import { SetTypeSheet } from '../components/SetTypeSheet';
 import { MUSCLES, WARMUP_DEFAULT_PCT } from '../science';
 import type { Plan, SetEntry, SetType, Unit, Workout } from '../types';
 import { ExercisePicker } from '../components/ExercisePicker';
@@ -11,8 +13,10 @@ import { BUILD, PLATFORM, openUpdate, type UpdateInfo } from '../update';
 import { ExerciseSheet } from '../components/ExerciseSheet';
 import { Icon } from '../components/Icon';
 
-const TYPE_ORDER: SetType[] = ['normal', 'warmup', 'drop', 'failure'];
-const TYPE_LABEL: Record<SetType, string> = { normal: 'Set', warmup: 'Warm', drop: 'Drop', failure: 'Fail' };
+const TYPE_LABEL: Record<SetType, string> = { normal: 'Set', warmup: 'Warm', drop: 'Drop', myo: 'Myo', failure: 'Fail' };
+/** Default reps for a myo-rep mini-set. */
+const MYO_MINI_REPS = 4;
+type Draft = { w: string; r: string; t: SetType; parent?: number };
 
 export async function startWorkout(from?: { plan?: Plan; repeat?: boolean }): Promise<boolean> {
   const active = await db.workouts.filter((w) => !w.endedAt).first();
@@ -256,18 +260,29 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
   const all = useLiveQuery(() => db.sets.where('exerciseId').equals(exId).toArray(), [exId]) ?? [];
 
   const sets = all.filter((s) => s.workoutId === workout.id).sort((a, b) => a.ts - b.ts);
-  const others = all.filter((s) => s.workoutId !== workout.id && isWorking(s));
+  const others = all.filter((s) => s.workoutId !== workout.id && isStrengthSet(s));
   const lastWid = others.length ? Math.max(...others.map((s) => s.workoutId)) : -1;
   const prev = others.filter((s) => s.workoutId === lastWid).sort((a, b) => a.ts - b.ts);
   const stall = stallInfo(toSessions(all.filter((s) => s.workoutId !== workout.id)));
 
   // Half-typed values survive reloads, app switches, and screen lock.
-  const [draft, setDraft] = useLocal(`draft.${workout.id}.${exId}`, { w: '', r: '', t: 'normal' as SetType });
+  const [draft, setDraft] = useLocal<Draft>(`draft.${workout.id}.${exId}`, { w: '', r: '', t: 'normal' });
+  const [typeOpen, setTypeOpen] = useState(false);
 
-  const working = sets.filter(isWorking);
+  // A drop set / myo-rep set in progress: its first set, plus the drops or mini-sets so far.
+  const head = draft.parent != null ? sets.find((s) => s.id === draft.parent) : undefined;
+  const chain = head ? [head, ...sets.filter((s) => s.parent === head.id)] : [];
+  const lastInChain = chain[chain.length - 1];
+
+  const working = sets.filter(isStrengthSet);
   const hint: SetEntry | undefined = working[working.length - 1] ?? prev[working.length] ?? prev[prev.length - 1];
-  const hintW = hint ? fmtW(hint.weight, unit) : '';
-  const hintR = hint ? String(hint.reps) : '';
+  let hintW = hint ? fmtW(hint.weight, unit) : '';
+  let hintR = hint ? String(hint.reps) : '';
+  if (head && lastInChain) {
+    // Next drop: ~20-25% lighter. Next mini-set: same weight, a few reps.
+    hintW = head.type === 'drop' ? String(roundLoad(toDisplay(lastInChain.weight, unit) * DROP_FACTOR, unit)) : fmtW(head.weight, unit);
+    hintR = head.type === 'drop' ? '' : String(lastInChain === head ? MYO_MINI_REPS : lastInChain.reps);
+  }
 
   // Warm-up: one lighter set before the first working set.
   const baseKg = draft.w && draft.t !== 'warmup' ? fromDisplay(Number(draft.w), unit) : hint?.weight;
@@ -280,11 +295,29 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
     const reps = Math.floor(Number(rStr));
     if (!rStr || Number.isNaN(w) || Number.isNaN(reps) || reps < 1 || w < 0) return;
     const kg = fromDisplay(w, unit);
+    if (head) {
+      // Another drop or mini-set: hangs off the first set, never a PR.
+      await db.sets.add({ workoutId: workout.id!, exerciseId: exId, weight: kg, reps, type: head.type, ts: Date.now(), parent: head.id });
+      setDraft({ w: '', r: '', t: head.type, parent: head.id });
+      return;
+    }
     const prs = detectPRs(all, kg, reps, draft.t);
-    await db.sets.add({ workoutId: workout.id!, exerciseId: exId, weight: kg, reps, type: draft.t, ts: Date.now(), prs });
+    const id = await db.sets.add({ workoutId: workout.id!, exerciseId: exId, weight: kg, reps, type: draft.t, ts: Date.now(), prs });
+    if (draft.t === 'drop' || draft.t === 'myo') setDraft({ w: '', r: '', t: draft.t, parent: id });
     // After a warm-up, clear so the working-weight hint comes back; otherwise keep values for the next set.
-    setDraft(draft.t === 'warmup' ? { w: '', r: '', t: 'normal' } : { w: wStr, r: rStr, t: draft.t });
+    else setDraft(draft.t === 'warmup' ? { w: '', r: '', t: 'normal' } : { w: wStr, r: rStr, t: draft.t });
     if (prs.length) showPR({ exercise: ex?.name ?? '', kinds: [], detail: `${fmtW(kg, unit)} ${unit} × ${reps}` });
+  };
+
+  /** Finish the drop set / myo-rep set and go back to regular sets at the first set's weight. */
+  const endChain = () => setDraft({ w: head ? fmtW(head.weight, unit) : '', r: '', t: 'normal' });
+
+  const deleteSet = async (s: SetEntry) => {
+    const kids = sets.filter((x) => x.parent === s.id);
+    const word = s.type === 'drop' ? 'drop' : 'mini-set';
+    if (kids.length && !confirm(`Delete this set and its ${kids.length} ${word}${kids.length === 1 ? '' : 's'}?`)) return;
+    await db.sets.bulkDelete([s.id!, ...kids.map((k) => k.id!)]);
+    if (draft.parent === s.id) setDraft({ w: '', r: '', t: 'normal' });
   };
 
   const removeExercise = async () => {
@@ -293,7 +326,6 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
     await db.workouts.update(workout.id!, { exerciseIds: workout.exerciseIds.filter((i) => i !== exId) });
   };
 
-  const cycleType = () => setDraft({ ...draft, t: TYPE_ORDER[(TYPE_ORDER.indexOf(draft.t) + 1) % TYPE_ORDER.length] });
   let n = 0;
 
   return (
@@ -325,23 +357,39 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
       {sets.length > 0 && (
         <div className="sets">
           {sets.map((s) => {
+            if (isFollowup(s)) return null;
             const w = isWorking(s);
             if (w) n++;
+            const kids = sets.filter((x) => x.parent === s.id);
+            const word = s.type === 'drop' ? 'drop' : 'mini-set';
             return (
-              <div key={s.id} className={`set ${s.type}`}>
+              <div key={s.id} className={`set ${s.type} ${kids.length ? 'chain' : ''}`}>
                 <span className="n">{w ? n : 'W'}</span>
-                <span className="v">
-                  {fmtW(s.weight, unit)}
-                  <small> {unit}</small> × {s.reps}
-                </span>
-                {s.type === 'drop' || s.type === 'failure' ? <span className="tag">{TYPE_LABEL[s.type]}</span> : null}
-                {w && !s.prs?.length && <span className="muted xs e1">e1RM {fmtW(e1rm(s.weight, s.reps), unit)}</span>}
-                {s.prs?.length ? (
-                  <span className="pr-chip">
-                    <Icon name="trophy" size={12} /> PR
-                  </span>
-                ) : null}
-                <button className="icon-btn sm" aria-label="Delete set" onClick={() => db.sets.delete(s.id!)}>
+                <div className="set-main">
+                  <div className="set-line">
+                    <span className="v">
+                      {fmtW(s.weight, unit)}
+                      <small> {unit}</small> × {s.reps}
+                    </span>
+                    {s.type === 'drop' || s.type === 'myo' || s.type === 'failure' ? <span className={`tag ${s.type}`}>{TYPE_LABEL[s.type]}</span> : null}
+                    {w && !s.prs?.length && !kids.length && <span className="muted xs e1">e1RM {fmtW(e1rm(s.weight, s.reps), unit)}</span>}
+                    {s.prs?.length ? (
+                      <span className="pr-chip">
+                        <Icon name="trophy" size={12} /> PR
+                      </span>
+                    ) : null}
+                  </div>
+                  {kids.length > 0 && (
+                    <div className="chain-segs">
+                      {kids.map((k) => (
+                        <button key={k.id} className="seg-chip" title="Tap to delete" onClick={() => confirm(`Delete this ${word}?`) && db.sets.delete(k.id!)}>
+                          {s.type === 'drop' ? `↘ ${fmtW(k.weight, unit)}×${k.reps}` : `+${k.reps}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button className="icon-btn sm" aria-label="Delete set" onClick={() => deleteSet(s)}>
                   <Icon name="close" size={15} />
                 </button>
               </div>
@@ -357,9 +405,25 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
         </button>
       )}
 
+      {head && (
+        <div className={`chain-bar ${head.type}`}>
+          <div className="grow">
+            <b>{head.type === 'drop' ? `Drop set · ${chain.length - 1} drop${chain.length === 2 ? '' : 's'}` : `Myo-reps · ${chain.length - 1} mini-set${chain.length === 2 ? '' : 's'}`}</b>
+            <small>
+              {head.type === 'drop'
+                ? 'Strip ~20–25% and go again right away, no rest.'
+                : `Rest 3–5 deep breaths, then ~${MYO_MINI_REPS} reps at ${fmtW(head.weight, unit)} ${unit}. Stop when you can't get 3.`}
+            </small>
+          </div>
+          <button className="btn secondary sm" onClick={endChain}>
+            Done
+          </button>
+        </div>
+      )}
+
       <div className="entry">
-        <button className={`type-btn ${draft.t}`} onClick={cycleType} aria-label={`Set type: ${draft.t}`}>
-          {TYPE_LABEL[draft.t]}
+        <button className={`type-btn ${draft.t} ${head ? 'chain' : ''}`} onClick={() => !head && setTypeOpen(true)} aria-label={`Set type: ${draft.t}. Tap to change`} disabled={!!head}>
+          {head ? (head.type === 'drop' ? '↘ Drop' : '+ Mini') : TYPE_LABEL[draft.t]}
         </button>
         <label className="field">
           <input inputMode="decimal" enterKeyHint="next" placeholder={hintW || '0'} value={draft.w} onChange={(e) => setDraft({ ...draft, w: e.target.value })} />
@@ -377,6 +441,16 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
 
       {stallOpen && <StallSheet exId={exId} onClose={() => setStallOpen(false)} />}
       {editing && <ExerciseSheet id={exId} onClose={() => setEditing(false)} />}
+      {typeOpen && (
+        <SetTypeSheet
+          value={draft.t}
+          onPick={(t) => {
+            setDraft({ ...draft, t, parent: undefined });
+            setTypeOpen(false);
+          }}
+          onClose={() => setTypeOpen(false)}
+        />
+      )}
     </section>
   );
 }

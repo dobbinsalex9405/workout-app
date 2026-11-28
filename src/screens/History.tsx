@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, deleteWorkout } from '../db';
 import { useLocal } from '../store';
-import { addDays, fmtDateLong, fmtN, fmtW, isWorking, startOfDay, startOfWeek, toDisplay } from '../calc';
+import { addDays, fmtDateLong, fmtN, fmtW, isStrengthSet, isWorking, startOfDay, startOfWeek, toDisplay } from '../calc';
 import type { Unit } from '../types';
 import { Chart } from '../components/Chart';
 import { Heatmap } from '../components/Heatmap';
@@ -103,7 +103,7 @@ export function HistoryScreen() {
                 </span>
               </div>
               <small className="muted">
-                {fmtDateLong(w.startedAt)} · {mins} min · {ws.filter(isWorking).length} sets · {fmtN(toDisplay(volBy.get(w.id!) ?? 0, unit))} {unit}
+                {fmtDateLong(w.startedAt)} · {mins} min · {ws.filter(isStrengthSet).length} sets · {fmtN(toDisplay(volBy.get(w.id!) ?? 0, unit))} {unit}
               </small>
             </button>
             {isOpen && (
@@ -119,9 +119,10 @@ export function HistoryScreen() {
                       </button>
                       <div className="hx-sets">
                         {xs.map((s) => (
-                          <span key={s.id} className={`hx-set ${s.type} ${s.prs?.length ? 'pr' : ''}`}>
+                          <span key={s.id} className={`hx-set ${s.type} ${s.prs?.length ? 'pr' : ''} ${s.parent != null ? 'follow' : ''}`}>
                             {s.type === 'warmup' ? 'W ' : ''}
-                            {fmtW(s.weight, unit)}×{s.reps}
+                            {s.parent != null ? (s.type === 'drop' ? `↘ ${fmtW(s.weight, unit)}×${s.reps}` : `+${s.reps}`) : `${fmtW(s.weight, unit)}×${s.reps}`}
+                            {s.parent == null && (s.type === 'drop' || s.type === 'myo') ? <small> {s.type === 'drop' ? 'drop' : 'myo'}</small> : null}
                           </span>
                         ))}
                       </div>

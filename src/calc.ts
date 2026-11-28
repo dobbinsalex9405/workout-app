@@ -3,6 +3,8 @@ import { db } from './db';
 import {
   DELOAD,
   FAILURE_EXTRA_HOURS,
+  FOLLOWUP_SET,
+  NEAR_FAILURE_TYPES,
   FATIGUE_SCALE_SETS,
   LOAD_INCREASE,
   MUSCLES,
@@ -36,6 +38,10 @@ export function roundLoad(display: number, unit: Unit) {
 export const e1rm = (kg: number, reps: number) => (reps <= 1 ? kg * Math.max(reps, 0) : kg * (1 + reps / 30));
 
 export const isWorking = (s: SetEntry) => s.type !== 'warmup' && s.reps >= 1;
+/** A drop or myo-rep mini-set (belongs to the set before it). */
+export const isFollowup = (s: SetEntry) => s.parent != null;
+/** Sets that speak for strength: working sets, minus drops and mini-sets (lighter or pre-fatigued). */
+export const isStrengthSet = (s: SetEntry) => isWorking(s) && !isFollowup(s);
 
 /* ---------- PRs ---------- */
 
@@ -49,7 +55,7 @@ export interface Best {
 export function bestOf(sets: SetEntry[]): Best {
   const b: Best = { weight: 0, e1rm: 0, setVolume: 0, count: 0 };
   for (const s of sets) {
-    if (!isWorking(s)) continue;
+    if (!isStrengthSet(s)) continue;
     b.count++;
     b.weight = Math.max(b.weight, s.weight);
     b.e1rm = Math.max(b.e1rm, e1rm(s.weight, s.reps));
@@ -77,7 +83,7 @@ export interface PRRecord {
 }
 
 export function prTimeline(sets: SetEntry[]): PRRecord[] {
-  const sorted = sets.filter(isWorking).sort((a, b) => a.ts - b.ts);
+  const sorted = sets.filter(isStrengthSet).sort((a, b) => a.ts - b.ts);
   const out: PRRecord[] = [];
   let bw = 0;
   sorted.forEach((s, i) => {
@@ -103,13 +109,14 @@ export function toSessions(sets: SetEntry[], starts?: Map<number, number>): Sess
       map.set(s.workoutId, x);
     }
     x.date = Math.min(x.date, s.ts);
+    x.volume += s.weight * s.reps;
+    x.reps += s.reps;
+    if (isFollowup(s)) continue; // drops and mini-sets add volume, not strength or set count
     if (s.weight > x.topWeight || (s.weight === x.topWeight && s.reps > x.topReps)) {
       x.topWeight = s.weight;
       x.topReps = s.reps;
     }
     x.e1rm = Math.max(x.e1rm, e1rm(s.weight, s.reps));
-    x.volume += s.weight * s.reps;
-    x.reps += s.reps;
     x.sets += 1;
   }
   if (starts) for (const x of map.values()) x.date = starts.get(x.workoutId) ?? x.date;
@@ -231,8 +238,10 @@ export function muscleStats(sets: SetEntry[], exMap: Map<number, Exercise>, now:
     if (!ex) continue;
     const age = now - s.ts;
     if (age < 0) continue;
-    const extra = s.type === 'failure' ? FAILURE_EXTRA_HOURS : 0;
-    const apply = (m: Muscle, w: number) => {
+    const extra = (NEAR_FAILURE_TYPES as readonly string[]).includes(s.type) ? FAILURE_EXTRA_HOURS : 0;
+    const k = isFollowup(s) ? FOLLOWUP_SET : 1;
+    const apply = (m: Muscle, w0: number) => {
+      const w = w0 * k;
       const o = out[m];
       if (!o) return;
       // Exponential decay that falls to ~10% of the original by the end of the recovery window.
