@@ -71,6 +71,8 @@ export interface SetEntry {
   prs?: string[];
   /** A drop in a drop set, or a myo-rep mini-set: id of the cluster's first set. */
   parent?: number;
+  /** Reps in reserve you estimated (0–4; 5 = "4+"). Optional. "To failure" sets mean 0. */
+  rir?: number;
 }
 
 export interface Session {

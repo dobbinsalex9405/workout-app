@@ -5,6 +5,7 @@ import { setLocal, showPR, useLocal } from '../store';
 import { detectPRs, e1rm, fmtDateLong, fmtW, fromDisplay, isFollowup, isStrengthSet, isWorking, roundLoad, stallInfo, toDisplay, toSessions, warmupFor } from '../calc';
 import { DROP_FACTOR } from '../science';
 import { SetTypeSheet } from '../components/SetTypeSheet';
+import { FatigueHint } from '../components/FatigueHint';
 import { MUSCLES, WARMUP_DEFAULT_PCT } from '../science';
 import type { Plan, SetEntry, SetType, Unit, Workout } from '../types';
 import { ExercisePicker } from '../components/ExercisePicker';
@@ -14,6 +15,8 @@ import { ExerciseSheet } from '../components/ExerciseSheet';
 import { Icon } from '../components/Icon';
 
 const TYPE_LABEL: Record<SetType, string> = { normal: 'Set', warmup: 'Warm', drop: 'Drop', myo: 'Myo', failure: 'Fail' };
+/** RIR chip: blank → 0 → 1 → 2 → 3 → 4+ → blank. */
+const nextRir = (r?: number) => (r == null ? 0 : r >= 5 ? undefined : r + 1);
 /** Default reps for a myo-rep mini-set. */
 const MYO_MINI_REPS = 4;
 type Draft = { w: string; r: string; t: SetType; parent?: number };
@@ -372,6 +375,11 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
                       <small> {unit}</small> × {s.reps}
                     </span>
                     {s.type === 'drop' || s.type === 'myo' || s.type === 'failure' ? <span className={`tag ${s.type}`}>{TYPE_LABEL[s.type]}</span> : null}
+                    {w && s.type !== 'failure' && (
+                      <button className={`rir-chip ${s.rir != null ? 'on' : ''}`} aria-label="Reps in reserve: tap to change" onClick={() => db.sets.update(s.id!, { rir: nextRir(s.rir) })}>
+                        RIR {s.rir == null ? '–' : s.rir >= 5 ? '4+' : s.rir}
+                      </button>
+                    )}
                     {w && !s.prs?.length && !kids.length && <span className="muted xs e1">e1RM {fmtW(e1rm(s.weight, s.reps), unit)}</span>}
                     {s.prs?.length ? (
                       <span className="pr-chip">
@@ -404,6 +412,8 @@ function ExerciseCard({ workout, exId, unit }: { workout: Workout; exId: number;
           <small>{Math.round(warmPct * 100)}%</small>
         </button>
       )}
+
+      {!head && <FatigueHint all={all} today={sets} draftW={draft.w} unit={unit} />}
 
       {head && (
         <div className={`chain-bar ${head.type}`}>

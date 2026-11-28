@@ -132,6 +132,20 @@ export interface Ref {
 
 export const REFERENCES: Ref[] = [
   {
+    topic: 'Fatigue between sets',
+    claim: 'Reps drop more between sets with short rest (1 min) than long rest (3–5 min). The app starts from this curve and learns how you differ on each exercise.',
+    cite: 'Willardson & Burkett (2005, 2006). J Strength Cond Res.',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/?term=Willardson+Burkett+rest+interval+repetitions+squat+bench',
+    confidence: 'Moderate',
+  },
+  {
+    topic: 'Reps in reserve (RIR)',
+    claim: 'Lifters estimate reps left in the tank fairly well, typically within ~1 rep, and better closer to failure.',
+    cite: 'Halperin et al. (2022). Sports Med 52.',
+    url: 'https://pubmed.ncbi.nlm.nih.gov/?term=Halperin+2022+accuracy+predicting+repetitions+to+task+failure',
+    confidence: 'Moderate',
+  },
+  {
     topic: 'Drop sets',
     claim: 'Drop sets build about as much muscle as traditional sets in less time. This app counts each drop as half a set.',
     cite: 'Sødal et al. (2023). Sports Med Open 9:66.',

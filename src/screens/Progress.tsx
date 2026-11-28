@@ -9,6 +9,7 @@ import { Chart, Sparkline } from '../components/Chart';
 import { StallSheet } from '../components/StallSheet';
 import { Icon } from '../components/Icon';
 import { ExerciseSheet } from '../components/ExerciseSheet';
+import { FATIGUE, capacity, fatigueProfile, priorLoss, repsAt } from '../fatigue';
 
 type Range = '1M' | '3M' | '6M' | '1Y' | 'All';
 const RANGES: Range[] = ['1M', '3M', '6M', '1Y', 'All'];
@@ -181,6 +182,8 @@ function Detail({ exId, onBack }: { exId: number; onBack: () => void }) {
       <Chart title="Session volume" unitLabel={unit} kind="bar" points={s.map((x) => ({ x: x.date, y: w(x.volume) }))} format={(y) => fmtN(y)} />
       <Chart title="Total reps" kind="bar" color="var(--cyan)" points={s.map((x) => ({ x: x.date, y: x.reps }))} format={(y) => String(y)} />
 
+      <FatigueCard sets={sets} unit={unit} topKg={best.weight} />
+
       <div className="section-head">
         <span className="label">Personal records</span>
       </div>
@@ -201,5 +204,54 @@ function Detail({ exId, onBack }: { exId: number; onBack: () => void }) {
 
       {stallOpen && <StallSheet exId={exId} onClose={() => setStallOpen(false)} />}
     </div>
+  );
+}
+
+/** How much one hard set takes out of you on this exercise, learned from your sets. */
+function FatigueCard({ sets, unit, topKg }: { sets: SetEntry[]; unit: Unit; topKg: number }) {
+  const p = fatigueProfile(sets);
+  const lossAt = (rest: number) => p.scale * priorLoss(rest);
+  // In reps, at a typical working weight (~your 8-rep weight).
+  const w = topKg > 0 ? topKg : 100;
+  const cap = capacity(w, 8);
+  const repsLost = (rest: number) => 8 - repsAt(cap * (1 - lossAt(rest)), w);
+  return (
+    <>
+      <div className="section-head">
+        <span className="label">Fatigue between sets</span>
+      </div>
+      <section className="card fatigue-card">
+        {p.status === 'learning' ? (
+          <p className="muted sm">
+            Still learning. It needs {FATIGUE.minExamples} back-to-back sets with normal rest across {FATIGUE.minSessions} sessions (has {p.examples} from {p.sessions}). Log sets as you
+            do them so rest times are real. Adding RIR (tap the chip on a set) makes it much more accurate.
+          </p>
+        ) : (
+          <>
+            <div className="fatigue-rows">
+              {[60, 120, 180].map((r) => (
+                <div key={r} className="fatigue-row">
+                  <span className="muted">{r / 60} min rest</span>
+                  <b>−{(lossAt(r) * 100).toFixed(1)}%</b>
+                  <small className="muted">≈ {repsLost(r).toFixed(1)} reps per set</small>
+                </div>
+              ))}
+            </div>
+            <p className="muted sm">
+              You tire {p.scale > 1.15 ? `${Math.round((p.scale - 1) * 100)}% faster` : p.scale < 0.87 ? `${Math.round((1 - p.scale) * 100)}% slower` : 'about the same'} than the research
+              average on this lift. Based on {p.examples} set pairs from {p.sessions} sessions.
+            </p>
+            {p.status === 'ready' ? (
+              <p className="muted sm">
+                Checked against your own history: 80% of predictions landed within ±{Math.max(1, Math.round(p.p80 ?? 1))} rep{Math.round(p.p80 ?? 1) > 1 ? 's' : ''}.
+              </p>
+            ) : (
+              <p className="muted sm">Your sets vary too much to predict reliably yet ({p.p80?.toFixed(1)} reps off in 80% of checks), so workout predictions stay hidden.</p>
+            )}
+            {p.targetStyle && <p className="muted sm">You usually stop at the same rep target, so this reflects how you train, not how tired going all-out would make you. Logging RIR fixes that.</p>}
+          </>
+        )}
+      </section>
+    </>
   );
 }
