@@ -47,14 +47,14 @@ const ARM: Shape = {
     [176, 466, 184, 410, 240, 392], // deltoid
     [290, 330, 360, 262, 450, 262], // bicep rising to the peak
     [540, 262, 584, 290, 590, 336], // peak into the elbow crease
-    [598, 310, 606, 280, 614, 252], // inner forearm up to the wrist
-    [622, 250, 632, 248, 642, 248], // wrist (the fist sits on top)
-    [656, 247, 670, 247, 684, 247],
-    [698, 247, 710, 248, 722, 249],
-    [726, 250, 730, 252, 734, 256],
-    [742, 276, 750, 290, 756, 306], // outer forearm
-    [764, 336, 780, 366, 782, 402],
-    [786, 470, 742, 506, 668, 512], // elbow
+    [598, 300, 610, 250, 619, 214], // inner forearm, longer, up to the wrist
+    [626, 209, 634, 203, 643, 199], // wrist, angled back toward the shoulder (fist sits here)
+    [656, 193, 669, 188, 682, 183],
+    [695, 177, 706, 174, 718, 170],
+    [722, 170, 727, 170, 732, 172],
+    [744, 210, 754, 250, 760, 290], // outer forearm
+    [766, 330, 782, 366, 784, 402],
+    [788, 470, 742, 506, 668, 512], // elbow
   ],
 };
 const CLOSE_ANVIL: Seg = [330, 480, 252, 470, 168, 452];
@@ -98,6 +98,9 @@ const FIST: { x: number; y: number; w: number; h: number; r: number }[] = [
   { x: 576, y: 180, w: 118, h: 36, r: 18 },
   { x: 584, y: 215, w: 108, h: 36, r: 18 },
 ];
+/** The fist sits on the raised wrist, tilted back toward the shoulder like the top of a curl. */
+const GRIP = { angle: -22, cx: 672, cy: 190, lift: -60 };
+const gripStr = (e: number) => `rotate(${(GRIP.angle * e).toFixed(2)} ${GRIP.cx} ${GRIP.cy}) translate(0 ${(GRIP.lift * e).toFixed(1)})`;
 const THUMB = 'M 608 112 C 624 90 670 86 716 98 L 716 124 C 678 116 640 118 608 130 Z';
 const SPARKS = Array.from({ length: 9 }, (_, i) => {
   const a = (-170 + i * (160 / 8)) * (Math.PI / 180); // fan above the strike
@@ -119,6 +122,7 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
   const sparks = useRef<SVGGElement>(null);
   const fibers = useRef<SVGGElement>(null);
   const fist = useRef<SVGGElement>(null);
+  const grip = useRef<SVGGElement>(null);
   const word = useRef<HTMLDivElement>(null);
   const done = useRef(false);
 
@@ -148,6 +152,7 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
         s(fibers.current, 'opacity', 1);
         s(hammer.current, 'opacity', 1);
         s(hammer.current, 'transform', poseStr(HELD));
+        s(grip.current, 'transform', gripStr(1));
         fist.current?.querySelectorAll('g').forEach((g) => s(g, 'opacity', 1));
         if (word.current) word.current.style.opacity = '1';
         const o = t < 300 ? t / 300 : t > 1000 ? 1 - (t - 1000) / 300 : 1;
@@ -167,9 +172,10 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
       const recoil = easeOut(span(t, T.hit, T.fly[0]));
       const angle = t < T.hit ? lerp(62, 0, swing) : lerp(0, 18, recoil);
       let pose: Pose = { ...STRIKE, a: angle };
+      let e = 0;
       if (t >= T.fly[0]) {
         const f = span(t, T.fly[0], T.fly[1]);
-        const e = f < 0.5 ? 4 * f * f * f : 1 - (-2 * f + 2) ** 3 / 2; // ease in-out
+        e = f < 0.5 ? 4 * f * f * f : 1 - (-2 * f + 2) ** 3 / 2; // ease in-out
         pose = {
           x: lerp(STRIKE.x, HELD.x, e),
           y: lerp(STRIKE.y, HELD.y, e) - 90 * Math.sin(Math.PI * e), // a little lob
@@ -179,6 +185,7 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
         };
       }
       s(hammer.current, 'transform', poseStr(pose));
+      s(grip.current, 'transform', gripStr(e)); // tilt blends in as it flies to the hand
       s(hammer.current, 'opacity', span(t, T.hammerIn[0], T.hammerIn[1]));
 
       // the fingers close around the handle one after another
@@ -300,12 +307,14 @@ export function LaunchIntro({ onDone }: { onDone: () => void }) {
             ))}
           </g>
 
-          <g ref={hammer} opacity="0">
-            <use href="#li-hammer" fill="url(#li-body)" />
-            <use href="#li-hammer" fill="none" stroke="url(#li-edge)" strokeWidth="9" strokeLinejoin="round" />
+          <g ref={grip}>
+            <g ref={hammer} opacity="0">
+              <use href="#li-hammer" fill="url(#li-body)" />
+              <use href="#li-hammer" fill="none" stroke="url(#li-edge)" strokeWidth="9" strokeLinejoin="round" />
+            </g>
           </g>
 
-          <g ref={fist}>
+          <g ref={fist} transform={gripStr(1)}>
             {FIST.map((f, i) => (
               <g key={i} opacity="0">
                 <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={f.r} fill="url(#li-body)" stroke="url(#li-edge)" strokeWidth="9" />
