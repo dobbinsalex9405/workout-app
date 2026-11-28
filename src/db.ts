@@ -25,6 +25,7 @@ export async function initDB() {
   if ((await db.exercises.count()) === 0) await db.exercises.bulkAdd(SEED);
   await migrateSeedV2();
   await migrateSeedV3();
+  await addMissingSeeds('seed.v4');
   await migratePRsV2();
   // One-time: seed "My exercises" with everything already in a plan or with logged sets.
   if (!localStorage.getItem('mine.v1')) {
@@ -74,6 +75,20 @@ async function migrateSeedV2() {
  * still match the old defaults (your edits are kept); new built-ins (Incline Dumbbell Curl,
  * Reverse Curl) are added if missing.
  */
+/**
+ * Adds library exercises that aren't in your list yet (new ones from an update). Skips any name
+ * you already have, built-in or your own, so nothing is duplicated or changed. Runs once per version.
+ */
+async function addMissingSeeds(flag: string) {
+  if (localStorage.getItem(flag)) return;
+  await db.transaction('rw', db.exercises, async () => {
+    const have = new Set((await db.exercises.toArray()).map((e) => e.name.trim().toLowerCase()));
+    const missing = SEED.filter((e) => !have.has(e.name.trim().toLowerCase()));
+    if (missing.length) await db.exercises.bulkAdd(missing.map((e) => ({ ...e })));
+  });
+  localStorage.setItem(flag, '1');
+}
+
 async function migrateSeedV3() {
   if (localStorage.getItem('seed.v3')) return;
   const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
