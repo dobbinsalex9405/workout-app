@@ -6,6 +6,7 @@ import { detectPRs, e1rm, fmtDateLong, fmtW, fromDisplay, isFollowup, isStrength
 import { DROP_FACTOR } from '../science';
 import { SetTypeSheet } from '../components/SetTypeSheet';
 import { FatigueHint } from '../components/FatigueHint';
+import { RestTimer } from '../components/RestTimer';
 import { MUSCLES, WARMUP_DEFAULT_PCT } from '../science';
 import type { Plan, SetEntry, SetType, Unit, Workout } from '../types';
 import { ExercisePicker } from '../components/ExercisePicker';
@@ -234,6 +235,7 @@ function Active({ workout, unit }: { workout: Workout; unit: Unit }) {
         Discard workout
       </button>
 
+      <RestTimer workoutId={workout.id!} />
       {picking && <ExercisePicker exclude={workout.exerciseIds} onPick={addExercise} onClose={() => setPicking(false)} />}
     </div>
   );

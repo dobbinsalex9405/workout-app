@@ -583,3 +583,16 @@ p.fatigue-hint { font-size: 12.5px; }
 .guide-dots button.on { background: var(--cyan); width: 20px; border-radius: 4px; }
 .guide-nav { display: flex; gap: 10px; }
 .guide-nav .grow { flex: 1; }
+
+/* Rest timer (sticky at the bottom of an active workout) */
+.rest-timer { position: sticky; bottom: 10px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 16px; overflow: hidden; background: rgba(10, 20, 44, 0.92); border: 1px solid rgba(53, 200, 255, 0.45); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 18px -6px rgba(53, 200, 255, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.rest-fill { position: absolute; inset: 0; transform-origin: left; background: linear-gradient(90deg, rgba(47, 123, 255, 0.28), rgba(53, 200, 255, 0.18)); pointer-events: none; transition: transform 0.25s linear; }
+.rest-timer > *:not(.rest-fill) { position: relative; }
+.rest-mid { flex: 1; text-align: center; display: flex; flex-direction: column; line-height: 1.1; }
+.rest-mid small { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.rest-mid b { font-size: 24px; color: var(--ice); font-variant-numeric: tabular-nums; }
+.rest-adj { font: inherit; font-weight: 800; font-size: 13px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line2); background: var(--panel2); color: var(--ice); }
+.rest-x { font: inherit; font-size: 20px; width: 34px; height: 34px; border-radius: 10px; border: 0; background: none; color: var(--muted); }
+.rest-timer.done { border-color: rgba(53, 200, 255, 0.9); animation: restPulse 1s ease-in-out infinite; }
+.rest-timer.done .rest-mid b { color: var(--cyan); }
+@keyframes restPulse { 50% { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 30px 2px rgba(53, 200, 255, 0.75); } }
